@@ -65,7 +65,13 @@ Export 설정(배율·포맷)을 넣고 전부 선택해 주면, 그다음은 **
 
 1. 저장 방식에서 `Figma 내보내기` 선택
 2. **Export 설정 넣고 선택하기** 를 누름 — 대상 레이어가 모두 선택됨
-3. 오른쪽 Design 패널 맨 아래 **Export N layers** 버튼을 누름
+3. 캔버스를 한 번 클릭해 포커스를 옮기고 **Shift+Ctrl+E** (Mac은 **⇧⌘E**)
+   — 또는 오른쪽 Design 패널 맨 아래 **Export N layers** 버튼
+
+3번을 플러그인이 대신 눌러줄 수는 없습니다. Figma 플러그인 API에는 Export 같은
+에디터 메뉴 동작을 실행하는 수단이 없고(`figma` 전역에 있는 UI 관련 메서드는
+`notify` / `showUI` / `closePlugin` / `triggerUndo` 정도가 전부입니다), 플러그인 UI는
+교차 출처 iframe이라 Figma 문서에 키 이벤트를 흘려보낼 수도 없습니다.
 
 > 이 방식은 레이어의 Export 설정을 실제로 바꿉니다(문서가 수정됨).
 > 되돌리려면 Figma에서 실행 취소(Ctrl/Cmd+Z) 하면 됩니다.

@@ -408,7 +408,7 @@
   // ------------------------------------------------------------------ view
   var DELIVERY_HINT = {
     zip: "저장 창이 한 번만 뜹니다",
-    figma: "대상 레이어에 Export 설정을 넣고 전부 선택합니다. 이어서 <b style=\"color:#888\">오른쪽 패널의 Export</b> 를 누르면 폴더를 한 번만 묻고 개별 파일로 저장됩니다",
+    figma: "대상 레이어에 Export 설정을 넣고 전부 선택합니다. 이어서 캔버스를 한 번 클릭하고 <b style=\"color:#888\">Shift+Ctrl+E</b> (Mac은 <b style=\"color:#888\">⇧⌘E</b>) 를 누르면 폴더를 한 번만 묻고 개별 파일로 저장됩니다",
     each: "파일마다 저장 창이 뜨고, 한 번에 10개 정도까지만 저장됩니다"
   };
 
@@ -553,7 +553,7 @@
       if (!msg.count) {
         setStatus("warn", "설정을 넣을 레이어가 없습니다");
       } else {
-        setStatus("ok", "✅ " + msg.count + "개 선택 완료 — 오른쪽 패널의 <b>Export " + msg.count + " layers</b> 를 눌러주세요");
+        setStatus("ok", "✅ " + msg.count + "개 선택 완료 — 캔버스 클릭 후 <b>Shift+Ctrl+E</b>");
         pinnedStatus = true;
       }
       if (msg.errors && msg.errors.length) {

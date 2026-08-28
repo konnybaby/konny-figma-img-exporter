@@ -190,7 +190,7 @@ function prepareNativeExport(opts) {
   figma.currentPage.selection = nodes;
   figma.viewport.scrollAndZoomIntoView(nodes);
   figma.ui.postMessage({ type: 'native-ready', count: ok, errors: errors });
-  if (ok) figma.notify('오른쪽 패널의 Export ' + ok + ' layers 를 눌러 저장하세요', { timeout: 6000 });
+  if (ok) figma.notify(ok + '개 선택됨 — Shift+Ctrl+E (⇧⌘E) 또는 오른쪽 패널의 Export ' + ok + ' layers', { timeout: 8000 });
 }
 
 // ------------------------------------------------------------------ events
