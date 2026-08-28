@@ -207,8 +207,10 @@
     <div class="section-label">저장 방식</div>
     <div class="cols-row" id="deliveryChips">
       <button class="col-chip on" data-value="zip">ZIP 압축 파일</button>
+      <button class="col-chip" data-value="figma">Figma 내보내기</button>
       <button class="col-chip" data-value="each">개별 파일</button>
     </div>
+    <div style="font-size:10px;color:#aaa;margin-top:5px;" id="deliveryHint"></div>
   </div>
 
   <!-- 옵션 -->
@@ -243,6 +245,8 @@
   var collected = [];
   var matchCount = 0;
   var busy = false;
+  // 네이티브 Export 안내는 selectionchange 재스캔에 덮이면 안 되므로 고정해 둔다.
+  var pinnedStatus = false;
 
   var patternEl   = document.getElementById("pattern");
   var btnReset    = document.getElementById("btnReset");
@@ -402,6 +406,12 @@
   }
 
   // ------------------------------------------------------------------ view
+  var DELIVERY_HINT = {
+    zip: "저장 창이 한 번만 뜹니다",
+    figma: "대상 레이어에 Export 설정을 넣고 전부 선택합니다. 이어서 <b style=\"color:#888\">오른쪽 패널의 Export</b> 를 누르면 폴더를 한 번만 묻고 개별 파일로 저장됩니다",
+    each: "파일마다 저장 창이 뜨고, 한 번에 10개 정도까지만 저장됩니다"
+  };
+
   function setStatus(type, msg) {
     statusEl.className = "status " + type;
     statusText.innerHTML = msg;
@@ -418,7 +428,10 @@
     };
   }
 
-  function post(type) { parent.postMessage({ pluginMessage: settings(type) }, "*"); }
+  function post(type) {
+    pinnedStatus = false;
+    parent.postMessage({ pluginMessage: settings(type) }, "*");
+  }
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
@@ -466,7 +479,14 @@
   }
 
   chipGroup(document.getElementById("scaleChips"), function (v) { state.scale = v; });
-  chipGroup(document.getElementById("deliveryChips"), function (v) { state.delivery = v; });
+    var deliveryHint = document.getElementById("deliveryHint");
+  function renderDeliveryHint() { deliveryHint.innerHTML = DELIVERY_HINT[state.delivery] || ""; }
+  chipGroup(document.getElementById("deliveryChips"), function (v) {
+    state.delivery = v;
+    renderDeliveryHint();
+    btnExport.textContent = v === "figma" ? "Export 설정 넣고 선택하기" : "이미지 내보내기";
+  });
+  renderDeliveryHint();
   chipGroup(document.getElementById("formatChips"), function (v) {
     state.format = v;
     var raster = v === "PNG" || v === "JPG";
@@ -497,6 +517,12 @@
 
   btnExport.addEventListener("click", function () {
     if (busy || matchCount === 0) return;
+
+    if (state.delivery === "figma") {
+      post("native-export");
+      return;
+    }
+
     collected = [];
     setBusy(true);
     setStatus("", '<span class="spinner"></span>내보내는 중…');
@@ -516,10 +542,23 @@
 
     if (msg.type === "scan-result") {
       renderPreview(msg.items);
-      if (busy) return;
+      if (busy || pinnedStatus) return;
       if (msg.error) setStatus("error", "⚠️ " + escapeHtml(msg.error));
       else if (!msg.items.length) setStatus("warn", escapeHtml(msg.target) + " — 일치하는 레이어 없음");
       else setStatus("ok", escapeHtml(msg.target) + " — " + msg.items.length + "개 발견");
+      return;
+    }
+
+    if (msg.type === "native-ready") {
+      if (!msg.count) {
+        setStatus("warn", "설정을 넣을 레이어가 없습니다");
+      } else {
+        setStatus("ok", "✅ " + msg.count + "개 선택 완료 — 오른쪽 패널의 <b>Export " + msg.count + " layers</b> 를 눌러주세요");
+        pinnedStatus = true;
+      }
+      if (msg.errors && msg.errors.length) {
+        setStatus("error", "❌ 실패 " + msg.errors.length + "건 — " + escapeHtml(msg.errors[0]));
+      }
       return;
     }
 

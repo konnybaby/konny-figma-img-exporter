@@ -159,6 +159,40 @@ async function runExport(opts) {
   figma.ui.postMessage({ type: 'done', ok: ok, errors: errors });
 }
 
+// ------------------------------------------------- figma 네이티브 내보내기
+// 플러그인은 파일을 디스크에 직접 쓸 수 없고, 다운로드는 파일마다 저장 창이
+// 뜨는 데다 한 번에 열 수 있는 개수도 제한된다. 대신 대상 레이어에 Export
+// 설정을 심고 한꺼번에 선택해 두면, 그다음은 Figma 자체 Export 기능이
+// 폴더를 한 번만 묻고 개별 파일로 전부 저장해 준다.
+function prepareNativeExport(opts) {
+  var fmt = opts.format || 'PNG';
+  var nodes = lastMatches.slice();
+
+  if (nodes.length === 0) {
+    figma.ui.postMessage({ type: 'native-ready', count: 0, errors: ['대상 레이어가 없습니다.'] });
+    return;
+  }
+
+  var setting = { format: fmt, suffix: '' };
+  if (fmt === 'PNG' || fmt === 'JPG') setting.constraint = toConstraint(opts.scale);
+
+  var errors = [];
+  var ok = 0;
+  for (var i = 0; i < nodes.length; i++) {
+    try {
+      nodes[i].exportSettings = [setting];
+      ok++;
+    } catch (e) {
+      errors.push(nodes[i].name + ' — ' + String((e && e.message) || e));
+    }
+  }
+
+  figma.currentPage.selection = nodes;
+  figma.viewport.scrollAndZoomIntoView(nodes);
+  figma.ui.postMessage({ type: 'native-ready', count: ok, errors: errors });
+  if (ok) figma.notify('오른쪽 패널의 Export ' + ok + ' layers 를 눌러 저장하세요', { timeout: 6000 });
+}
+
 // ------------------------------------------------------------------ events
 
 var uiState = { pattern: DEFAULT_PATTERN, skipHidden: true, sortByName: true };
@@ -189,6 +223,12 @@ figma.ui.onmessage = function (msg) {
       remember(msg);
       scan(uiState.pattern, uiState.skipHidden, uiState.sortByName);
       runExport(msg);
+      break;
+
+    case 'native-export':
+      remember(msg);
+      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName);
+      prepareNativeExport(msg);
       break;
 
     case 'select': {
