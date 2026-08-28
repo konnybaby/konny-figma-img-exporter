@@ -209,6 +209,7 @@
       <button class="col-chip on" data-value="zip">ZIP 압축 파일</button>
       <button class="col-chip" data-value="each">개별 파일</button>
     </div>
+    <div style="font-size:10px;color:#aaa;margin-top:5px;">개별 파일은 폴더를 <b style="color:#888">한 번</b> 선택해 한꺼번에 저장합니다. 폴더 선택을 쓸 수 없는 환경에서는 자동으로 ZIP으로 묶입니다</div>
   </div>
 
   <!-- 옵션 -->
@@ -243,6 +244,7 @@
   var collected = [];
   var matchCount = 0;
   var busy = false;
+  var dirHandle = null;   // 개별 저장 시 사용할 폴더 핸들
 
   var patternEl   = document.getElementById("pattern");
   var btnReset    = document.getElementById("btnReset");
@@ -382,23 +384,40 @@
     return MIME[ext] || "application/octet-stream";
   }
 
-  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-
   function stamp() {
     var d = new Date();
     var p = function (n) { return (n < 10 ? "0" : "") + n; };
     return String(d.getFullYear()) + p(d.getMonth() + 1) + p(d.getDate()) + "_" + p(d.getHours()) + p(d.getMinutes());
   }
 
+  // 저장 창을 한 번만 띄우는 것이 목표다.
+  //  - ZIP        : 파일 하나라 저장 창도 하나
+  //  - 개별 + 폴더 : 미리 받아 둔 폴더 핸들에 전부 써넣으므로 창이 뜨지 않음
+  //  - 개별 + 1개  : 그냥 내려받으면 창 하나
+  //  - 그 외      : 파일마다 창이 뜨는 것을 피하기 위해 ZIP으로 묶는다
   async function deliver(files) {
     if (state.delivery === "zip") {
       download(makeZip(files), "konny_export_" + stamp() + ".zip");
-    } else {
-      for (var i = 0; i < files.length; i++) {
-        download(new Blob([files[i].data], { type: mimeOf(files[i].name) }), files[i].name);
-        await sleep(150);
-      }
+      return "zip";
     }
+
+    if (dirHandle) {
+      for (var i = 0; i < files.length; i++) {
+        var handle = await dirHandle.getFileHandle(files[i].name, { create: true });
+        var writable = await handle.createWritable();
+        await writable.write(files[i].data);
+        await writable.close();
+      }
+      return "folder";
+    }
+
+    if (files.length === 1) {
+      download(new Blob([files[0].data], { type: mimeOf(files[0].name) }), files[0].name);
+      return "single";
+    }
+
+    download(makeZip(files), "konny_export_" + stamp() + ".zip");
+    return "zip-fallback";
   }
 
   // ------------------------------------------------------------------ view
@@ -495,8 +514,21 @@
     post("scan");
   });
 
-  btnExport.addEventListener("click", function () {
+  btnExport.addEventListener("click", async function () {
     if (busy || matchCount === 0) return;
+
+    // 폴더 선택창은 클릭 제스처가 살아 있는 동안에만 열 수 있다.
+    // 내보내기(await)를 시작한 뒤에는 제스처가 만료되므로 먼저 띄운다.
+    dirHandle = null;
+    if (state.delivery === "each" && matchCount > 1 && window.showDirectoryPicker) {
+      try {
+        dirHandle = await window.showDirectoryPicker({ id: "konnyImageExporter", mode: "readwrite" });
+      } catch (e) {
+        if (e && e.name === "AbortError") return;   // 사용자가 취소 — 내보내기도 하지 않는다
+        dirHandle = null;                           // 지원하지 않는 환경 — ZIP으로 폴백
+      }
+    }
+
     collected = [];
     setBusy(true);
     setStatus("", '<span class="spinner"></span>내보내는 중…');
@@ -538,8 +570,10 @@
       if (count) {
         setStatus("", '<span class="spinner"></span>' + count + "개 파일 저장 중…");
         try {
-          await deliver(collected);
-          setStatus("ok", "✅ " + count + "개 내보내기 완료");
+          var how = await deliver(collected);
+          if (how === "folder") setStatus("ok", "✅ " + count + "개 폴더에 저장 완료");
+          else if (how === "zip-fallback") setStatus("warn", "개별 저장을 지원하지 않는 환경이라 ZIP 하나로 묶었습니다 — " + count + "개");
+          else setStatus("ok", "✅ " + count + "개 내보내기 완료");
           parent.postMessage({ pluginMessage: { type: "notify", message: count + "개 이미지를 내보냈습니다" } }, "*");
         } catch (e) {
           setStatus("error", "❌ 저장 실패: " + escapeHtml((e && e.message) || e));
