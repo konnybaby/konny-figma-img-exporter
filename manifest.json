@@ -4,9 +4,14 @@
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
-  "editorType": ["figma"],
+  "editorType": [
+    "figma"
+  ],
   "networkAccess": {
-    "allowedDomains": ["https://konny.co.kr"],
-    "reasoning": "헤더의 코니 로고 이미지를 불러오기 위해 필요합니다. 이미지 내보내기 처리는 모두 로컬에서 수행됩니다."
+    "allowedDomains": [
+      "https://konny.co.kr",
+      "http://localhost:8787"
+    ],
+    "reasoning": "헤더의 코니 로고 이미지를 불러오고, 로컬 저장 서버(127.0.0.1:8787)로 내보낸 이미지를 전달하기 위해 필요합니다."
   }
 }
