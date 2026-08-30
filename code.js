@@ -82,28 +82,20 @@ function uniqueName(used, base, ext) {
   return picked;
 }
 
-function describeTarget() {
+function describeTarget(mode) {
   var sel = figma.currentPage.selection;
+  if (mode === 'selection') {
+    if (sel.length === 0) return '선택된 레이어 없음';
+    if (sel.length === 1) return '선택: ' + sel[0].name;
+    return '선택: ' + sel.length + '개 레이어';
+  }
   if (sel.length === 0) return '선택 없음 → 현재 페이지 전체 (' + figma.currentPage.name + ')';
   if (sel.length === 1) return '선택: ' + sel[0].name;
   return '선택: ' + sel.length + '개 레이어';
 }
 
-// ------------------------------------------------------------------- scan
-
-function scan(pattern, skipHidden, sortByName) {
-  var parsed = safeRegExp(pattern || DEFAULT_PATTERN);
-  if (parsed.err) {
-    lastMatches = [];
-    figma.ui.postMessage({ type: 'scan-result', target: describeTarget(), items: [], error: '정규식 오류: ' + parsed.err });
-    return;
-  }
-
-  var matches = collectMatches(getRoots(), parsed.re, !!skipHidden);
-  if (sortByName) matches.sort(function (a, b) { return naturalCompare(a.name, b.name); });
-  lastMatches = matches;
-
-  var items = matches.map(function (n) {
+function toItems(nodes) {
+  return nodes.map(function (n) {
     return {
       id: n.id,
       name: n.name,
@@ -112,8 +104,44 @@ function scan(pattern, skipHidden, sortByName) {
       h: Math.round(('height' in n) ? n.height : 0)
     };
   });
+}
 
-  figma.ui.postMessage({ type: 'scan-result', target: describeTarget(), items: items, error: null });
+// ------------------------------------------------------------------- scan
+
+function sortIfNeeded(nodes, sortByName) {
+  if (sortByName) nodes.sort(function (a, b) { return naturalCompare(a.name, b.name); });
+  return nodes;
+}
+
+// mode 'selection' — 캔버스에서 고른 레이어를 이름과 상관없이 그대로 쓴다.
+// mode 'pattern'(기본) — 고른 프레임 아래에서 이름이 패턴에 맞는 레이어만 찾는다.
+function scan(pattern, skipHidden, sortByName, mode) {
+  if (mode === 'selection') {
+    var sel = figma.currentPage.selection.slice();
+    if (skipHidden) sel = sel.filter(function (n) { return n.visible !== false; });
+    lastMatches = sortIfNeeded(sel, sortByName);
+    figma.ui.postMessage({
+      type: 'scan-result', mode: 'selection',
+      target: describeTarget('selection'), items: toItems(lastMatches), error: null
+    });
+    return;
+  }
+
+  var parsed = safeRegExp(pattern || DEFAULT_PATTERN);
+  if (parsed.err) {
+    lastMatches = [];
+    figma.ui.postMessage({
+      type: 'scan-result', mode: 'pattern',
+      target: describeTarget('pattern'), items: [], error: '정규식 오류: ' + parsed.err
+    });
+    return;
+  }
+
+  lastMatches = sortIfNeeded(collectMatches(getRoots(), parsed.re, !!skipHidden), sortByName);
+  figma.ui.postMessage({
+    type: 'scan-result', mode: 'pattern',
+    target: describeTarget('pattern'), items: toItems(lastMatches), error: null
+  });
 }
 
 // ----------------------------------------------------------------- export
@@ -209,12 +237,13 @@ function prepareNativeExport(opts) {
 
 // ------------------------------------------------------------------ events
 
-var uiState = { pattern: DEFAULT_PATTERN, skipHidden: true, sortByName: true };
+var uiState = { pattern: DEFAULT_PATTERN, skipHidden: true, sortByName: true, mode: 'pattern' };
 
 function remember(msg) {
   if (typeof msg.pattern === 'string') uiState.pattern = msg.pattern;
   if (typeof msg.skipHidden === 'boolean') uiState.skipHidden = msg.skipHidden;
   if (typeof msg.sortByName === 'boolean') uiState.sortByName = msg.sortByName;
+  if (msg.mode === 'pattern' || msg.mode === 'selection') uiState.mode = msg.mode;
 }
 
 figma.ui.onmessage = function (msg) {
@@ -224,24 +253,24 @@ figma.ui.onmessage = function (msg) {
     case 'init':
       figma.ui.postMessage({ type: 'defaults', pattern: DEFAULT_PATTERN });
       remember(msg);
-      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName);
+      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
       break;
 
     case 'scan':
       remember(msg);
-      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName);
+      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
       break;
 
     case 'export':
       // 내보내기 직전 최신 상태로 다시 스캔해 선택 변경을 반영한다.
       remember(msg);
-      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName);
+      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
       runExport(msg);
       break;
 
     case 'native-export':
       remember(msg);
-      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName);
+      scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
       prepareNativeExport(msg);
       break;
 
@@ -265,5 +294,5 @@ figma.ui.onmessage = function (msg) {
 };
 
 figma.on('selectionchange', function () {
-  scan(uiState.pattern, uiState.skipHidden, uiState.sortByName);
+  scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
 });

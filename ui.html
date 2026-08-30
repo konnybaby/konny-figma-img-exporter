@@ -166,8 +166,18 @@
 </div>
 
 <div class="body">
-  <!-- 레이어 이름 패턴 -->
+  <!-- 대상 지정 방식 -->
   <div>
+    <div class="section-label">대상 지정</div>
+    <div class="cols-row" id="targetChips">
+      <button class="col-chip on" data-value="pattern">이름 패턴으로 찾기</button>
+      <button class="col-chip" data-value="selection">선택한 레이어 그대로</button>
+    </div>
+    <div style="font-size:10px;color:#aaa;margin-top:5px;" id="targetHint"></div>
+  </div>
+
+  <!-- 레이어 이름 패턴 -->
+  <div id="patternSection">
     <div class="section-label">Layer Name Pattern</div>
     <div class="input-row">
       <input type="text" id="pattern" placeholder="^KO[A-Za-z0-9]{3}_img_"/>
@@ -241,7 +251,7 @@
 <script>
   var DEFAULT_PATTERN = "^KO[A-Za-z0-9]{3}_img_";
 
-  var state = { scale: "2", format: "PNG", delivery: "zip", skipHidden: true, sortByName: true };
+  var state = { mode: "pattern", scale: "2", format: "PNG", delivery: "zip", skipHidden: true, sortByName: true };
   var collected = [];
   var matchCount = 0;
   var busy = false;
@@ -436,6 +446,11 @@
   }
 
   // ------------------------------------------------------------------ view
+  var TARGET_HINT = {
+    pattern: "고른 프레임 아래에서 이름이 패턴에 맞는 레이어만 찾습니다. 아무것도 안 고르면 현재 페이지 전체가 대상입니다",
+    selection: "캔버스에서 고른 레이어를 이름과 상관없이 그대로 내보냅니다"
+  };
+
   var DELIVERY_HINT = {
     zip: "ZIP 하나로 받습니다. 저장 창이 한 번만 뜹니다",
     figma: "<b style=\"color:#888\">Export 설정 적용</b> 버튼을 누른 후 오른쪽 Design 패널 맨 아래 <b style=\"color:#888\">Export N layers</b> 버튼을 눌러주세요."
@@ -449,6 +464,7 @@
   function settings(type) {
     return {
       type: type,
+      mode: state.mode,
       pattern: patternEl.value.trim() || DEFAULT_PATTERN,
       skipHidden: state.skipHidden,
       sortByName: state.sortByName,
@@ -474,7 +490,8 @@
     btnExport.disabled = busy || items.length === 0;
 
     if (!items.length) {
-      previewList.innerHTML = '<div class="preview-empty">일치하는 레이어가 없습니다</div>';
+      previewList.innerHTML = '<div class="preview-empty">' +
+        (state.mode === "selection" ? "캔버스에서 레이어를 선택해 주세요" : "일치하는 레이어가 없습니다") + '</div>';
       return;
     }
     previewList.innerHTML = items.map(function (it) {
@@ -533,6 +550,22 @@
     btnExport.textContent = state.delivery === "figma" ? "Export 설정 적용" : "이미지 내보내기";
     renderDeliveryHint();
   }
+
+  var patternSection = document.getElementById("patternSection");
+  var targetHint = document.getElementById("targetHint");
+
+  function syncTarget() {
+    targetHint.innerHTML = TARGET_HINT[state.mode] || "";
+    // 선택한 레이어를 그대로 쓸 때는 패턴 입력이 의미가 없어 감춘다.
+    patternSection.style.display = state.mode === "pattern" ? "" : "none";
+  }
+
+  chipGroup(document.getElementById("targetChips"), function (v) {
+    state.mode = v;
+    syncTarget();
+    post("scan");
+  });
+  syncTarget();
 
   chipGroup(document.getElementById("deliveryChips"), function (v) {
     state.delivery = v;
@@ -603,9 +636,15 @@
     if (msg.type === "scan-result") {
       renderPreview(msg.items);
       if (busy || pinnedStatus) return;
-      if (msg.error) setStatus("error", "⚠️ " + escapeHtml(msg.error));
-      else if (!msg.items.length) setStatus("warn", escapeHtml(msg.target) + " — 일치하는 레이어 없음");
-      else setStatus("ok", escapeHtml(msg.target) + " — " + msg.items.length + "개 발견");
+      if (msg.error) {
+        setStatus("error", "⚠️ " + escapeHtml(msg.error));
+      } else if (!msg.items.length) {
+        setStatus("warn", msg.mode === "selection"
+          ? "내보낼 레이어를 캔버스에서 선택해 주세요"
+          : escapeHtml(msg.target) + " — 일치하는 레이어 없음");
+      } else {
+        setStatus("ok", escapeHtml(msg.target) + " — " + msg.items.length + "개");
+      }
       return;
     }
 
