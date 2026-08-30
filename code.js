@@ -3,7 +3,12 @@
 
 var DEFAULT_PATTERN = '^KO[A-Za-z0-9]{3}_img_';
 
-var EXT = { PNG: 'png', JPG: 'jpg', SVG: 'svg', PDF: 'pdf' };
+var EXT = { PNG: 'png', JPG: 'jpg', WEBP: 'webp', SVG: 'svg', PDF: 'pdf' };
+
+// Figma 는 WebP 를 내보내지 못한다. PNG 로 받아 UI 에서 다시 인코딩한다.
+function figmaFormat(fmt) {
+  return fmt === 'WEBP' ? 'PNG' : fmt;
+}
 
 var lastMatches = [];
 
@@ -131,8 +136,8 @@ async function runExport(opts) {
   }
 
   var settings;
-  if (fmt === 'PNG' || fmt === 'JPG') {
-    settings = { format: fmt, constraint: toConstraint(opts.scale) };
+  if (fmt === 'PNG' || fmt === 'JPG' || fmt === 'WEBP') {
+    settings = { format: figmaFormat(fmt), constraint: toConstraint(opts.scale) };
   } else {
     settings = { format: fmt };
   }
@@ -170,6 +175,15 @@ function prepareNativeExport(opts) {
 
   if (nodes.length === 0) {
     figma.ui.postMessage({ type: 'native-ready', count: 0, errors: ['대상 레이어가 없습니다.'] });
+    return;
+  }
+
+  // Figma 자체 Export 는 WebP 를 지원하지 않아 이 방식에서는 고를 수 없다.
+  if (fmt === 'WEBP') {
+    figma.ui.postMessage({
+      type: 'native-ready', count: 0,
+      errors: ['Figma 자체 Export 는 WebP 를 지원하지 않습니다. ZIP 방식을 써 주세요.']
+    });
     return;
   }
 

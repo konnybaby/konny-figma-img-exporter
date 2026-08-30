@@ -1,6 +1,0 @@
-# Windows에서 더블클릭으로 실행되는 파일은 CRLF 로 체크아웃해야 한다.
-*.bat text eol=crlf
-*.ps1 text eol=crlf
-# macOS 셸 스크립트는 CRLF 면 실행되지 않는다.
-*.command text eol=lf
-*.py text eol=lf
