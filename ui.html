@@ -170,8 +170,8 @@
   <div>
     <div class="section-label">대상 지정</div>
     <div class="cols-row" id="targetChips">
-      <button class="col-chip on" data-value="pattern">이름 패턴으로 찾기</button>
-      <button class="col-chip" data-value="selection">선택한 레이어 그대로</button>
+      <button class="col-chip on" data-value="selection">선택한 레이어</button>
+      <button class="col-chip" data-value="pattern">이름 패턴으로 찾기</button>
     </div>
     <div style="font-size:10px;color:#aaa;margin-top:5px;" id="targetHint"></div>
   </div>
@@ -187,7 +187,7 @@
   </div>
 
   <!-- 상태 -->
-  <div id="status" class="status"><div class="dot"></div><span class="status-text" id="statusText">프레임을 선택하면 대상 레이어를 찾습니다</span></div>
+  <div id="status" class="status"><div class="dot"></div><span class="status-text" id="statusText">내보낼 레이어를 캔버스에서 선택해 주세요</span></div>
 
   <!-- 배율 -->
   <div>
@@ -251,7 +251,7 @@
 <script>
   var DEFAULT_PATTERN = "^KO[A-Za-z0-9]{3}_img_";
 
-  var state = { mode: "pattern", scale: "2", format: "PNG", delivery: "zip", skipHidden: true, sortByName: true };
+  var state = { mode: "selection", scale: "2", format: "PNG", delivery: "zip", skipHidden: true, sortByName: true };
   var collected = [];
   var matchCount = 0;
   var busy = false;
@@ -448,7 +448,7 @@
   // ------------------------------------------------------------------ view
   var TARGET_HINT = {
     pattern: "고른 프레임 아래에서 이름이 패턴에 맞는 레이어만 찾습니다. 아무것도 안 고르면 현재 페이지 전체가 대상입니다",
-    selection: "캔버스에서 고른 레이어를 이름과 상관없이 그대로 내보냅니다"
+    selection: "캔버스에서 고른 레이어를 이름과 상관없이 내보냅니다"
   };
 
   var DELIVERY_HINT = {

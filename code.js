@@ -237,7 +237,7 @@ function prepareNativeExport(opts) {
 
 // ------------------------------------------------------------------ events
 
-var uiState = { pattern: DEFAULT_PATTERN, skipHidden: true, sortByName: true, mode: 'pattern' };
+var uiState = { pattern: DEFAULT_PATTERN, skipHidden: true, sortByName: true, mode: 'selection' };
 
 function remember(msg) {
   if (typeof msg.pattern === 'string') uiState.pattern = msg.pattern;
