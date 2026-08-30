@@ -1,4 +1,4 @@
-// Konny Image Exporter — Figma plugin (main thread)
+// Konny Figma Image Exporter — Figma plugin (main thread)
 // 선택한 프레임 하위에서 `KO???_img_...` 형식의 레이어만 골라 일괄 내보내기.
 
 var DEFAULT_PATTERN = '^KO[A-Za-z0-9]{3}_img_';
@@ -12,7 +12,7 @@ function figmaFormat(fmt) {
 
 var lastMatches = [];
 
-figma.showUI(__html__, { width: 440, height: 680, title: "Konny Image Exporter" });
+figma.showUI(__html__, { width: 440, height: 680, title: "Konny Figma Image Exporter" });
 
 // ---------------------------------------------------------------- utilities
 
@@ -204,7 +204,7 @@ function prepareNativeExport(opts) {
   figma.currentPage.selection = nodes;
   figma.viewport.scrollAndZoomIntoView(nodes);
   figma.ui.postMessage({ type: 'native-ready', count: ok, errors: errors });
-  if (ok) figma.notify(ok + '개 선택됨 — Shift+Ctrl+E (⇧⌘E) 또는 오른쪽 패널의 Export ' + ok + ' layers', { timeout: 8000 });
+  if (ok) figma.notify(ok + '개 선택됨 — 오른쪽 패널의 Export ' + ok + ' layers 를 누르세요 (캔버스를 클릭하면 선택이 풀립니다)', { timeout: 8000 });
 }
 
 // ------------------------------------------------------------------ events

@@ -1,5 +1,5 @@
 {
-  "name": "Konny Image Exporter",
+  "name": "Konny Figma Image Exporter",
   "id": "konny-figma-img-exporter",
   "api": "1.0.0",
   "main": "code.js",
