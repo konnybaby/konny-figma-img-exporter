@@ -438,7 +438,7 @@
   // ------------------------------------------------------------------ view
   var DELIVERY_HINT = {
     zip: "ZIP 하나로 받습니다. 저장 창이 한 번만 뜹니다",
-    figma: "Figma 의 Export 는 <b style=\"color:#888\">지금 선택된 것</b>을 내보냅니다. 그래서 플러그인이 대상 레이어에 Export 설정을 넣고, 캔버스 선택을 프레임에서 <b style=\"color:#888\">대상 레이어들로 바꿔</b> 둡니다. 이어서 오른쪽 Design 패널 맨 아래 <b style=\"color:#888\">Export N layers</b> 버튼을 누르세요 — 캔버스를 클릭하면 이 선택이 풀립니다"
+    figma: "<b style=\"color:#888\">Export 설정 적용</b> 버튼을 누른 후 오른쪽 Design 패널 맨 아래 <b style=\"color:#888\">Export N layers</b> 버튼을 눌러주세요."
   };
 
   function setStatus(type, msg) {
@@ -510,8 +510,6 @@
   chipGroup(document.getElementById("scaleChips"), function (v) { state.scale = v; });
     var deliveryHint = document.getElementById("deliveryHint");
   function renderDeliveryHint() { deliveryHint.innerHTML = DELIVERY_HINT[state.delivery] || ""; }
-  var deliveryChips = document.getElementById("formatChips");
-
   function chipByValue(groupId, value) {
     return document.querySelector("#" + groupId + ' .col-chip[data-value="' + value + '"]');
   }
@@ -529,10 +527,10 @@
     var scaleChips = document.getElementById("scaleChips").querySelectorAll(".col-chip");
     for (var i = 0; i < scaleChips.length; i++) scaleChips[i].disabled = !raster;
 
+    // WebP 는 항상 고를 수 있다. 고르면 저장 방식이 ZIP 으로 바뀐다(아래 칩 핸들러).
     chipByValue("deliveryChips", "figma").disabled = state.format === "WEBP";
-    chipByValue("formatChips", "WEBP").disabled = state.delivery === "figma";
 
-    btnExport.textContent = state.delivery === "figma" ? "Export 설정 적용 + 레이어 선택" : "이미지 내보내기";
+    btnExport.textContent = state.delivery === "figma" ? "Export 설정 적용" : "이미지 내보내기";
     renderDeliveryHint();
   }
 
