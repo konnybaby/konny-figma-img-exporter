@@ -1,4 +1,4 @@
-# Konny Image Exporter
+# Konny Figma Image Exporter
 
 선택한 프레임 아래에서 `KO???_img_...` 형식의 레이어만 골라, 2x PNG로 한 번에 내보내는 Figma 플러그인입니다.
 
