@@ -438,7 +438,7 @@
   // ------------------------------------------------------------------ view
   var DELIVERY_HINT = {
     zip: "ZIP 하나로 받습니다. 저장 창이 한 번만 뜹니다",
-    figma: "대상 레이어에 Export 설정을 넣고 전부 선택합니다. 이어서 오른쪽 Design 패널 맨 아래 <b style=\"color:#888\">Export N layers</b> 버튼을 누르세요. <b style=\"color:#888\">캔버스를 클릭하면 선택이 풀리니</b> 주의하세요"
+    figma: "Figma 의 Export 는 <b style=\"color:#888\">지금 선택된 것</b>을 내보냅니다. 그래서 플러그인이 대상 레이어에 Export 설정을 넣고, 캔버스 선택을 프레임에서 <b style=\"color:#888\">대상 레이어들로 바꿔</b> 둡니다. 이어서 오른쪽 Design 패널 맨 아래 <b style=\"color:#888\">Export N layers</b> 버튼을 누르세요 — 캔버스를 클릭하면 이 선택이 풀립니다"
   };
 
   function setStatus(type, msg) {
@@ -532,7 +532,7 @@
     chipByValue("deliveryChips", "figma").disabled = state.format === "WEBP";
     chipByValue("formatChips", "WEBP").disabled = state.delivery === "figma";
 
-    btnExport.textContent = state.delivery === "figma" ? "Export 설정 넣고 선택하기" : "이미지 내보내기";
+    btnExport.textContent = state.delivery === "figma" ? "Export 설정 적용 + 레이어 선택" : "이미지 내보내기";
     renderDeliveryHint();
   }
 
@@ -615,7 +615,7 @@
       if (!msg.count) {
         setStatus("warn", "설정을 넣을 레이어가 없습니다");
       } else {
-        setStatus("ok", "✅ " + msg.count + "개 선택됨 — 오른쪽 패널의 <b>Export " + msg.count + " layers</b> 클릭");
+        setStatus("ok", "✅ 선택을 대상 " + msg.count + "개로 바꿨습니다 — 오른쪽 패널의 <b>Export " + msg.count + " layers</b> 클릭");
         pinnedStatus = true;
       }
       if (msg.errors && msg.errors.length) {

@@ -204,7 +204,7 @@ function prepareNativeExport(opts) {
   figma.currentPage.selection = nodes;
   figma.viewport.scrollAndZoomIntoView(nodes);
   figma.ui.postMessage({ type: 'native-ready', count: ok, errors: errors });
-  if (ok) figma.notify(ok + '개 선택됨 — 오른쪽 패널의 Export ' + ok + ' layers 를 누르세요 (캔버스를 클릭하면 선택이 풀립니다)', { timeout: 8000 });
+  if (ok) figma.notify('선택을 대상 레이어 ' + ok + '개로 바꿨습니다 — 오른쪽 패널의 Export ' + ok + ' layers 를 누르세요 (캔버스를 클릭하면 선택이 풀립니다)', { timeout: 8000 });
 }
 
 // ------------------------------------------------------------------ events
