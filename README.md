@@ -139,7 +139,8 @@ UI는 **Konny PDP Text Exporter** 의 스타일시트를 그대로 가져와 맞
 - 포인트 컬러 `#FF5A14` — 칩 배경 `#fff0e5`, 칩 보더 `#fadac3`
 - 헤더 `16px 20px 12px` + 하단 보더, 로고 36px 원형, 타이틀 15px/700/-0.3px, 서브타이틀 11px `#888`
 - 섹션 라벨 10px/700/자간 0.8px 대문자, 입력·버튼 radius 8px, 칩 radius 20px
-- 하단 검정 버튼 1개, 창 크기 440 x 680
+- 하단 검정 버튼 1개, 창 크기 440 x 720
+- 설정 영역만 스크롤되고 `내보낼 레이어` 목록과 버튼은 항상 보이도록 고정
 
 헤더 로고는 PDP Text Exporter와 같은 이미지(`konny.co.kr` 파비콘)를 씁니다.
 `manifest.json` 의 `networkAccess` 에는 이 로고 도메인 한 곳만 허용해 두었습니다.

@@ -12,7 +12,7 @@ function figmaFormat(fmt) {
 
 var lastMatches = [];
 
-figma.showUI(__html__, { width: 440, height: 680, title: "Konny Figma Image Exporter" });
+figma.showUI(__html__, { width: 440, height: 720, title: "Konny Figma Image Exporter" });
 
 // ---------------------------------------------------------------- utilities
 
