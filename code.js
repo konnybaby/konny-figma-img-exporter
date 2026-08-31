@@ -144,6 +144,24 @@ function scan(pattern, skipHidden, sortByName, mode) {
   });
 }
 
+// Auto layout 의 'Clip content'(clipsContent) 를 켠다. 이걸 꺼 두면 프레임 밖으로
+// 삐져나온 자식까지 내보내져 결과 크기가 프레임과 달라진다.
+// clipsContent 는 프레임 계열 노드에만 있고, 그룹 등에는 없다.
+function applyClipContent(nodes) {
+  var changed = 0;
+  for (var i = 0; i < nodes.length; i++) {
+    var n = nodes[i];
+    if (!('clipsContent' in n) || n.clipsContent === true) continue;
+    try {
+      n.clipsContent = true;
+      changed++;
+    } catch (e) {
+      // 잠긴 레이어 등 쓸 수 없는 경우는 건너뛴다.
+    }
+  }
+  return changed;
+}
+
 // ----------------------------------------------------------------- export
 
 // 배율은 '2' 같은 배수와 '1000w' 같은 고정 가로폭 두 가지를 받는다.
@@ -170,6 +188,8 @@ async function runExport(opts) {
     settings = { format: fmt };
   }
 
+  var clipped = opts.clipContent === false ? 0 : applyClipContent(nodes);
+
   var used = {};
   var errors = [];
   var ok = 0;
@@ -189,7 +209,7 @@ async function runExport(opts) {
     }
   }
 
-  figma.ui.postMessage({ type: 'done', ok: ok, errors: errors });
+  figma.ui.postMessage({ type: 'done', ok: ok, errors: errors, clipped: clipped });
 }
 
 // ------------------------------------------------- figma 네이티브 내보내기
@@ -218,6 +238,8 @@ function prepareNativeExport(opts) {
   var setting = { format: fmt, suffix: '' };
   if (fmt === 'PNG' || fmt === 'JPG') setting.constraint = toConstraint(opts.scale);
 
+  var clipped = opts.clipContent === false ? 0 : applyClipContent(nodes);
+
   var errors = [];
   var ok = 0;
   for (var i = 0; i < nodes.length; i++) {
@@ -231,7 +253,7 @@ function prepareNativeExport(opts) {
 
   figma.currentPage.selection = nodes;
   figma.viewport.scrollAndZoomIntoView(nodes);
-  figma.ui.postMessage({ type: 'native-ready', count: ok, errors: errors });
+  figma.ui.postMessage({ type: 'native-ready', count: ok, errors: errors, clipped: clipped });
   if (ok) figma.notify('선택을 대상 레이어 ' + ok + '개로 바꿨습니다 — 오른쪽 패널의 Export ' + ok + ' layers 를 누르세요 (캔버스를 클릭하면 선택이 풀립니다)', { timeout: 8000 });
 }
 

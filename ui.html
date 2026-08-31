@@ -234,6 +234,7 @@
     <div class="cols-row" id="optionChips">
       <button class="col-chip on" data-value="skipHidden">숨김 레이어 제외</button>
       <button class="col-chip on" data-value="sortByName">이름 순 정렬</button>
+      <button class="col-chip on" data-value="clipContent">Clip content 켜기</button>
     </div>
   </div>
 
@@ -258,7 +259,8 @@
 <script>
   var DEFAULT_PATTERN = "^KO[A-Za-z0-9]{3}_img_";
 
-  var state = { mode: "selection", scale: "2", format: "PNG", delivery: "zip", skipHidden: true, sortByName: true };
+  var state = { mode: "selection", scale: "2", format: "PNG", delivery: "zip",
+                skipHidden: true, sortByName: true, clipContent: true };
   var collected = [];
   var matchCount = 0;
   var busy = false;
@@ -463,6 +465,11 @@
     figma: "<b style=\"color:#888\">Export 설정 적용</b> 버튼을 누른 후 오른쪽 Design 패널 맨 아래 <b style=\"color:#888\">Export N layers</b> 버튼을 눌러주세요."
   };
 
+  // Clip content 를 새로 켠 레이어가 있으면 문서가 바뀌었다는 뜻이라 알려 준다.
+  function clipNote(n) {
+    return n ? " (Clip content " + n + "개 켬)" : "";
+  }
+
   function setStatus(type, msg) {
     statusEl.className = "status " + type;
     statusText.innerHTML = msg;
@@ -475,6 +482,7 @@
       pattern: patternEl.value.trim() || DEFAULT_PATTERN,
       skipHidden: state.skipHidden,
       sortByName: state.sortByName,
+      clipContent: state.clipContent,
       scale: state.scale,
       format: state.format
     };
@@ -659,7 +667,7 @@
       if (!msg.count) {
         setStatus("warn", "설정을 넣을 레이어가 없습니다");
       } else {
-        setStatus("ok", "✅ 선택을 대상 " + msg.count + "개로 바꿨습니다 — 오른쪽 패널의 <b>Export " + msg.count + " layers</b> 클릭");
+        setStatus("ok", "✅ 선택을 대상 " + msg.count + "개로 바꿨습니다" + clipNote(msg.clipped) + " — 오른쪽 패널의 <b>Export " + msg.count + " layers</b> 클릭");
         pinnedStatus = true;
       }
       if (msg.errors && msg.errors.length) {
@@ -685,7 +693,7 @@
         try {
           if (state.format === "WEBP") collected = await convertAllToWebp(collected);
           await deliver(collected);
-          setStatus("ok", "✅ " + count + "개 내보내기 완료");
+          setStatus("ok", "✅ " + count + "개 내보내기 완료" + clipNote(msg.clipped));
           parent.postMessage({ pluginMessage: { type: "notify", message: count + "개 이미지를 내보냈습니다" } }, "*");
         } catch (e) {
           setStatus("error", "❌ 저장 실패: " + escapeHtml((e && e.message) || e));
