@@ -166,6 +166,16 @@
   body.mini .mini-bar { display: block; }
   body.mini .header { border-bottom: none; padding-bottom: 0; }
 
+  /* 우측 하단 크기 조절 손잡이 */
+  .resize-handle {
+    position: fixed; right: 0; bottom: 0;
+    width: 15px; height: 15px; z-index: 10;
+    cursor: nwse-resize; color: #b9ada0;
+    display: flex; align-items: flex-end; justify-content: flex-end;
+  }
+  .resize-handle:hover { color: #7a7167; }
+  body.mini .resize-handle { display: none; }
+
   @keyframes spin { to { transform: rotate(360deg); } }
   .spinner {
     display: inline-block; width: 11px; height: 11px;
@@ -291,6 +301,12 @@
   <button class="btn btn-export" id="btnExport" disabled>이미지 내보내기</button>
 </div>
 
+<div class="resize-handle" id="resizeHandle" title="드래그해서 크기 조절">
+  <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+    <path d="M11 5.5 5.5 11M11 9.5 9.5 11"/>
+  </svg>
+</div>
+
 <script>
   var DEFAULT_PATTERN = "^KO[A-Za-z0-9]{3}_img_";
 
@@ -319,7 +335,17 @@
   // Sohee 피드백: 내보낼 프레임을 찾는 동안 창이 화면을 많이 가린다.
   // 뮤직 플레이어처럼 접었다 펼 수 있게 한다.
   var SIZE = { full: { w: 360, h: 640 }, mini: { w: 360, h: 156 } };
+  var MIN = { w: 300, h: 220 }, MAX = { w: 900, h: 1400 };
   var collapsed = false;
+
+  // 확대 상태 크기는 사용자가 드래그로 바꿀 수 있고, 그 값을 기억한다.
+  try {
+    var saved = JSON.parse(localStorage.getItem("konnyImageExporter_size") || "null");
+    if (saved && saved.w && saved.h) {
+      SIZE.full.w = Math.min(MAX.w, Math.max(MIN.w, saved.w));
+      SIZE.full.h = Math.min(MAX.h, Math.max(MIN.h, saved.h));
+    }
+  } catch (e) {}
 
   function applySize() {
     document.body.classList.toggle("mini", collapsed);
@@ -349,6 +375,35 @@
     el.className = "status ok";
     txt.textContent = bits.join(" · ");
   }
+
+  // 우측 하단 손잡이 드래그 — Figma 문서의 표준 리사이즈 패턴
+  (function () {
+    var handle = document.getElementById("resizeHandle");
+    var dragging = false;
+
+    handle.addEventListener("pointerdown", function (e) {
+      if (collapsed) return;
+      dragging = true;
+      handle.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    handle.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      SIZE.full.w = Math.min(MAX.w, Math.max(MIN.w, Math.floor(e.clientX + 5)));
+      SIZE.full.h = Math.min(MAX.h, Math.max(MIN.h, Math.floor(e.clientY + 5)));
+      parent.postMessage({ pluginMessage: { type: "resize", w: SIZE.full.w, h: SIZE.full.h } }, "*");
+    });
+
+    function stop(e) {
+      if (!dragging) return;
+      dragging = false;
+      try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
+      try { localStorage.setItem("konnyImageExporter_size", JSON.stringify(SIZE.full)); } catch (err) {}
+    }
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+  })();
 
   document.getElementById("btnToggle").addEventListener("click", function () {
     collapsed = !collapsed;
