@@ -10,7 +10,7 @@
     color: #1a1a1a;
     font-size: 13px;
     line-height: 1.5;
-    height: 720px;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -18,19 +18,29 @@
 
   /* Header */
   .header {
-    padding: 16px 20px 12px;
+    padding: 11px 14px 9px;
     border-bottom: 1px solid #c2c2c2;
     flex-shrink: 0;
     background: #fbf6ed;
   }
-  .header-top { display: flex; align-items: center; gap: 10px; }
-  .logo { width: 36px; height: 36px; border-radius: 100%; border: 1px solid #c2c2c2; overflow: hidden; flex-shrink: 0; }
+  .header-top { display: flex; align-items: center; gap: 9px; }
+  .logo { width: 30px; height: 30px; border-radius: 100%; border: 1px solid #c2c2c2; overflow: hidden; flex-shrink: 0; }
   .logo img { width: 100%; height: 100%; display: block; object-fit: cover; }
-  .title { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; color: #1a1a1a; }
-  .subtitle { font-size: 11px; color: #888; margin-top: 1px; }
+  .title { font-size: 13.5px; font-weight: 700; letter-spacing: -0.3px; color: #1a1a1a; }
+  .subtitle { font-size: 10px; color: #888; margin-top: 1px; }
+
+  /* 헤더 우측 축소/확대 토글 */
+  .btn-icon {
+    margin-left: auto; flex-shrink: 0;
+    width: 26px; height: 26px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid #c2c2c2; border-radius: 7px;
+    color: #1a1a1a; cursor: pointer; transition: background 0.15s;
+  }
+  .btn-icon:hover { background: #f2ece2; }
 
   /* Body */
-  .body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .body { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 11px; }
   /* flex 컨테이너는 넘치는 자식을 압축한다. 눌리면 카드가 헤더만 남고 목록이 잘리므로 막는다. */
   .body > * { flex-shrink: 0; }
 
@@ -43,7 +53,7 @@
 
   .section-label {
     font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
-    text-transform: uppercase; color: #888; margin-bottom: 7px;
+    text-transform: uppercase; color: #888; margin-bottom: 5px;
   }
 
   /* Input */
@@ -120,7 +130,7 @@
     background: #000; color: #fff;
     padding: 2px 8px; border-radius: 20px;
   }
-  .preview-list { max-height: 130px; overflow-y: auto; }
+  .preview-list { max-height: 104px; overflow-y: auto; }
   .preview-row {
     display: flex; justify-content: space-between; gap: 10px;
     padding: 6px 12px; border-bottom: 1px solid #f0ebe2;
@@ -133,16 +143,16 @@
   .preview-empty { padding: 16px; text-align: center; color: #aaa; font-size: 11px; }
 
   /* 내보낼 레이어 — 설정 스크롤과 무관하게 항상 보이게 고정한다 */
-  .preview-fixed { flex: none; padding: 0 20px 14px; background: #fbf6ed; }
+  .preview-fixed { flex: none; padding: 0 14px 11px; background: #fbf6ed; }
 
   /* Footer */
   .footer {
-    padding: 14px 20px; border-top: 1px solid #c2c2c2;
+    padding: 11px 14px; border-top: 1px solid #c2c2c2;
     display: flex; gap: 8px; flex-shrink: 0;
     background: #fbf6ed;
   }
   .btn {
-    flex: 1; padding: 11px;
+    flex: 1; padding: 10px;
     border-radius: 8px; font-size: 13px;
     font-weight: 700; font-family: inherit;
     cursor: pointer; border: none;
@@ -151,6 +161,14 @@
   .btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .btn-export { background: #000; color: #fff; }
   .btn-export:hover:not(:disabled) { opacity: 0.8; }
+
+  /* 축소(mini) 모드 — 요약 한 줄과 내보내기 버튼만 남긴다 */
+  .mini-bar { display: none; flex: none; padding: 11px 14px 0; }
+  body.mini .body,
+  body.mini .preview-fixed,
+  body.mini .subtitle { display: none; }
+  body.mini .mini-bar { display: block; }
+  body.mini .header { border-bottom: none; padding-bottom: 0; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
   .spinner {
@@ -174,7 +192,22 @@
       <div class="title">Konny Figma Image Exporter</div>
       <div class="subtitle">Konny 이미지 레이어 추출 → PNG</div>
     </div>
+    <button class="btn-icon" id="btnToggle" title="축소 / 확대" aria-label="축소 / 확대">
+      <svg id="icoMin" viewBox="0 0 16 16" width="14" height="14" fill="none"
+           stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 2.5v3.5h3.5M6 13.5V10H2.5"/>
+      </svg>
+      <svg id="icoMax" viewBox="0 0 16 16" width="14" height="14" fill="none" style="display:none"
+           stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.5 6V2.5H10M2.5 10v3.5H6"/>
+      </svg>
+    </button>
   </div>
+</div>
+
+<!-- 축소 모드 요약 -->
+<div class="mini-bar" id="miniBar">
+  <div class="status" id="miniStatus"><div class="dot"></div><span class="status-text" id="miniText">레이어를 선택해 주세요</span></div>
 </div>
 
 <div class="body">
@@ -285,6 +318,51 @@
   try {
     var saved = localStorage.getItem("konnyImageExporter_pattern");
     if (saved) patternEl.value = saved;
+  } catch (e) {}
+
+  // ------------------------------------------------------------ 축소 / 확대
+  // Sohee 피드백: 내보낼 프레임을 찾는 동안 창이 화면을 많이 가린다.
+  // 뮤직 플레이어처럼 접었다 펼 수 있게 한다.
+  var SIZE = { full: { w: 360, h: 600 }, mini: { w: 360, h: 156 } };
+  var collapsed = false;
+
+  function applySize() {
+    document.body.classList.toggle("mini", collapsed);
+    document.getElementById("icoMin").style.display = collapsed ? "none" : "";
+    document.getElementById("icoMax").style.display = collapsed ? "" : "none";
+    var s = collapsed ? SIZE.mini : SIZE.full;
+    parent.postMessage({ pluginMessage: { type: "resize", w: s.w, h: s.h } }, "*");
+    renderMini();
+  }
+
+  // 축소 상태에서는 개수·배율·포맷·저장 방식만 요약해서 보여 준다.
+  function renderMini() {
+    if (!collapsed) return;
+    var el = document.getElementById("miniStatus");
+    var txt = document.getElementById("miniText");
+    if (!matchCount) {
+      el.className = "status warn";
+      txt.textContent = state.mode === "selection"
+        ? "레이어를 선택해 주세요" : "일치하는 레이어 없음";
+      return;
+    }
+    var raster = state.format === "PNG" || state.format === "JPG" || state.format === "WEBP";
+    var bits = [matchCount + "개"];
+    if (raster) bits.push(state.scale === "1000w" ? "1000w" : state.scale + "x");
+    bits.push(state.format === "WEBP" ? "WebP" : state.format);
+    bits.push(state.delivery === "figma" ? "Figma 내보내기" : "ZIP");
+    el.className = "status ok";
+    txt.textContent = bits.join(" · ");
+  }
+
+  document.getElementById("btnToggle").addEventListener("click", function () {
+    collapsed = !collapsed;
+    try { localStorage.setItem("konnyImageExporter_collapsed", collapsed ? "1" : "0"); } catch (e) {}
+    applySize();
+  });
+
+  try {
+    collapsed = localStorage.getItem("konnyImageExporter_collapsed") === "1";
   } catch (e) {}
 
   // ------------------------------------------------------------ zip writer
@@ -508,6 +586,7 @@
 
   function renderPreview(items) {
     matchCount = items.length;
+    setTimeout(renderMini, 0);
     countBadge.textContent = items.length + "개";
     btnExport.disabled = busy || items.length === 0;
 
@@ -546,7 +625,7 @@
     });
   }
 
-  chipGroup(document.getElementById("scaleChips"), function (v) { state.scale = v; });
+  chipGroup(document.getElementById("scaleChips"), function (v) { state.scale = v; renderMini(); });
     var deliveryHint = document.getElementById("deliveryHint");
   function renderDeliveryHint() {
     deliveryHint.innerHTML = DELIVERY_HINT[state.delivery] || "";
@@ -574,6 +653,7 @@
 
     btnExport.textContent = state.delivery === "figma" ? "Export 설정 적용" : "이미지 내보내기";
     renderDeliveryHint();
+    renderMini();
   }
 
   var patternSection = document.getElementById("patternSection");
@@ -720,6 +800,7 @@
     }
   };
 
+  applySize();
   post("init");
 </script>
 </body>

@@ -12,7 +12,8 @@ function figmaFormat(fmt) {
 
 var lastMatches = [];
 
-figma.showUI(__html__, { width: 440, height: 720, title: "Konny Figma Image Exporter" });
+// 화면을 덜 가리도록 작게 연다. UI 에서 축소/확대 토글로 resize 를 요청한다.
+figma.showUI(__html__, { width: 360, height: 600, title: "Konny Figma Image Exporter" });
 
 // ---------------------------------------------------------------- utilities
 
@@ -304,6 +305,13 @@ figma.ui.onmessage = function (msg) {
       }
       break;
     }
+
+    case 'resize':
+      // UI 가 요청한 크기로 창을 줄이거나 늘린다.
+      if (typeof msg.w === 'number' && typeof msg.h === 'number') {
+        figma.ui.resize(Math.max(240, Math.round(msg.w)), Math.max(96, Math.round(msg.h)));
+      }
+      break;
 
     case 'notify':
       figma.notify(msg.message);
