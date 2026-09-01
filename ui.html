@@ -459,8 +459,19 @@
     return out;
   }
 
+  // ZIP 은 파일 시각을 MS-DOS 형식(현지 시각, 2초 단위)으로 저장한다.
+  // 이걸 채우지 않으면 압축을 풀었을 때 수정일이 1980/2000년으로 나온다.
+  function dosDateTime(d) {
+    var year = Math.min(2107, Math.max(1980, d.getFullYear()));
+    return {
+      time: ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF,
+      date: (((year - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF
+    };
+  }
+
   function makeZip(files) {
     var parts = [], central = [], offset = 0;
+    var now = dosDateTime(new Date());
 
     for (var i = 0; i < files.length; i++) {
       var nameBytes = utf8(files[i].name);
@@ -473,8 +484,8 @@
       lv.setUint16(4, 20, true);        // version needed
       lv.setUint16(6, 0x0800, true);    // UTF-8 파일명 플래그
       lv.setUint16(8, 0, true);         // method: store
-      lv.setUint16(10, 0, true);        // mod time
-      lv.setUint16(12, 0x2821, true);   // mod date (2000-01-01)
+      lv.setUint16(10, now.time, true); // mod time
+      lv.setUint16(12, now.date, true); // mod date
       lv.setUint32(14, crc, true);
       lv.setUint32(18, data.length, true);
       lv.setUint32(22, data.length, true);
@@ -489,8 +500,8 @@
       cv.setUint16(6, 20, true);        // version needed
       cv.setUint16(8, 0x0800, true);
       cv.setUint16(10, 0, true);
-      cv.setUint16(12, 0, true);
-      cv.setUint16(14, 0x2821, true);
+      cv.setUint16(12, now.time, true);
+      cv.setUint16(14, now.date, true);
       cv.setUint32(16, crc, true);
       cv.setUint32(20, data.length, true);
       cv.setUint32(24, data.length, true);
