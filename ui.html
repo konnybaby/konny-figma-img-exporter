@@ -122,7 +122,7 @@
   }
   .preview-header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 12px; border-bottom: 1px solid #c2c2c2;
+    padding: 6px 10px; border-bottom: 1px solid #c2c2c2;
   }
   .preview-title { font-size: 11px; font-weight: 600; color: #1a1a1a; }
   .count-badge {
@@ -133,17 +133,14 @@
   .preview-list { max-height: 104px; overflow-y: auto; }
   .preview-row {
     display: flex; justify-content: space-between; gap: 10px;
-    padding: 6px 12px; border-bottom: 1px solid #f0ebe2;
+    padding: 3px 10px; border-bottom: 1px solid #f0ebe2;
     font-size: 11px; color: #444; cursor: pointer;
   }
   .preview-row:last-child { border-bottom: none; }
   .preview-row:hover { background: #fbf6ed; }
   .preview-row .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .preview-row .dim { flex-shrink: 0; color: #aaa; }
-  .preview-empty { padding: 16px; text-align: center; color: #aaa; font-size: 11px; }
-
-  /* 내보낼 레이어 — 설정 스크롤과 무관하게 항상 보이게 고정한다 */
-  .preview-fixed { flex: none; padding: 0 14px 11px; background: #fbf6ed; }
+  .preview-empty { padding: 12px; text-align: center; color: #aaa; font-size: 11px; }
 
   /* Footer */
   .footer {
@@ -165,7 +162,6 @@
   /* 축소(mini) 모드 — 요약 한 줄과 내보내기 버튼만 남긴다 */
   .mini-bar { display: none; flex: none; padding: 11px 14px 0; }
   body.mini .body,
-  body.mini .preview-fixed,
   body.mini .subtitle { display: none; }
   body.mini .mini-bar { display: block; }
   body.mini .header { border-bottom: none; padding-bottom: 0; }
@@ -278,9 +274,7 @@
     </div>
   </div>
 
-</div>
-
-<div class="preview-fixed">
+  <!-- 미리보기 -->
   <div class="preview-wrap">
     <div class="preview-header">
       <span class="preview-title">내보낼 레이어</span>
@@ -291,6 +285,7 @@
     </div>
   </div>
 </div>
+
 
 <div class="footer">
   <button class="btn btn-export" id="btnExport" disabled>이미지 내보내기</button>
@@ -323,7 +318,7 @@
   // ------------------------------------------------------------ 축소 / 확대
   // Sohee 피드백: 내보낼 프레임을 찾는 동안 창이 화면을 많이 가린다.
   // 뮤직 플레이어처럼 접었다 펼 수 있게 한다.
-  var SIZE = { full: { w: 360, h: 600 }, mini: { w: 360, h: 156 } };
+  var SIZE = { full: { w: 360, h: 640 }, mini: { w: 360, h: 156 } };
   var collapsed = false;
 
   function applySize() {

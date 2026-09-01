@@ -13,7 +13,7 @@ function figmaFormat(fmt) {
 var lastMatches = [];
 
 // 화면을 덜 가리도록 작게 연다. UI 에서 축소/확대 토글로 resize 를 요청한다.
-figma.showUI(__html__, { width: 360, height: 600, title: "Konny Figma Image Exporter" });
+figma.showUI(__html__, { width: 360, height: 640, title: "Konny Figma Image Exporter" });
 
 // ---------------------------------------------------------------- utilities
 
