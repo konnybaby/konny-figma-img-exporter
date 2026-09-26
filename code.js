@@ -265,6 +265,36 @@ function prepareNativeExport(opts) {
 
 // ------------------------------------------------------------------ events
 
+// ------------------------------------------------ Export 버튼 쪽으로 안내
+// 플러그인은 Figma 패널의 버튼을 누르거나 강조할 수 없다. 대신 창을 캔버스 오른쪽 아래,
+// 즉 Design 패널 바로 옆으로 옮겨 Export 버튼 쪽으로 시선을 끈다.
+// reposition 은 캔버스 좌표를 받으므로 화면 px 을 확대율로 나눠 바꾼다.
+var guideReturn = null;   // 안내 전 창 위치 — 뷰포트 좌상단 기준 화면 px
+
+function screenToCanvas(px, py) {
+  var b = figma.viewport.bounds, z = figma.viewport.zoom;
+  return { x: b.x + px / z, y: b.y + py / z };
+}
+
+function startGuide(w, h) {
+  var b = figma.viewport.bounds, z = figma.viewport.zoom;
+  if (!guideReturn) {
+    var pos = figma.ui.getPosition().canvasSpace;
+    guideReturn = { x: (pos.x - b.x) * z, y: (pos.y - b.y) * z };
+  }
+  var MARGIN = 16;
+  var p = screenToCanvas(b.width * z - w - MARGIN, b.height * z - h - MARGIN);
+  figma.ui.reposition(p.x, p.y);
+}
+
+function endGuide() {
+  if (!guideReturn) return;
+  // 그사이 화면을 움직였어도 같은 화면 위치로 돌아가도록 현재 뷰포트 기준으로 다시 계산한다.
+  var q = screenToCanvas(guideReturn.x, guideReturn.y);
+  guideReturn = null;
+  figma.ui.reposition(q.x, q.y);
+}
+
 var uiState = { pattern: DEFAULT_PATTERN, skipHidden: true, sortByName: true, mode: 'selection' };
 
 function remember(msg) {
@@ -310,6 +340,14 @@ figma.ui.onmessage = function (msg) {
       }
       break;
     }
+
+    case 'guide':
+      try { startGuide(Number(msg.w) || 300, Number(msg.h) || 120); } catch (e) {}
+      break;
+
+    case 'guide-end':
+      try { endGuide(); } catch (e) {}
+      break;
 
     case 'resize':
       // UI 가 요청한 크기로 창을 줄이거나 늘린다.

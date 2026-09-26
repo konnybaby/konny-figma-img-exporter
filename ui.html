@@ -201,6 +201,42 @@
   .resize-handle:hover { color: #7a7167; }
   body.mini .resize-handle { display: none; }
 
+  /* Export 버튼 안내 카드 — 창이 Design 패널 옆으로 옮겨 가서 오른쪽을 가리킨다 */
+  /* 카드는 .guide, 안내 중인 상태는 body.guiding — 이름이 같으면 body 가 숨겨진다 */
+  .guide { display: none; }
+  body.guiding .header,
+  body.guiding .body,
+  body.guiding .footer,
+  body.guiding .mini-bar,
+  body.guiding .resize-handle { display: none !important; }
+  body.guiding .guide {
+    display: flex; flex-direction: column; justify-content: center; gap: 10px;
+    height: 100%; padding: 12px 14px;
+  }
+  .guide-row { display: flex; align-items: center; gap: 12px; }
+  .guide-text { flex: 1; font-size: 12px; line-height: 1.6; color: #1a1a1a; }
+  /* Figma 의 Export 버튼과 비슷하게 그려 어떤 버튼인지 바로 알아보게 한다 */
+  .guide-cta {
+    display: inline-block; padding: 0 8px; margin: 2px 0;
+    border: 1px solid #1a1a1a; border-radius: 5px; background: #fff;
+    font-weight: 700; white-space: nowrap;
+  }
+  .guide-sub { font-size: 10.5px; color: #888; }
+  .guide-arrow {
+    flex: none; width: 38px; height: 38px; border-radius: 50%;
+    background: #FF5A14; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    animation: nudge 0.9s ease-in-out infinite;
+  }
+  @keyframes nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(7px); } }
+  .guide-back {
+    align-self: flex-start; padding: 0; border: none; background: none;
+    font: inherit; font-size: 11px; font-weight: 600; color: #888;
+    text-decoration: underline; cursor: pointer;
+  }
+  .guide-back:hover { color: #1a1a1a; }
+  @media (prefers-reduced-motion: reduce) { .guide-arrow { animation: none; } }
+
   @keyframes spin { to { transform: rotate(360deg); } }
   .spinner {
     display: inline-block; width: 11px; height: 11px;
@@ -327,6 +363,22 @@
 
 <div class="footer">
   <button class="btn btn-export" id="btnExport" disabled>이미지 내보내기</button>
+</div>
+
+<!-- Export 버튼 안내 (개별 파일 모드에서 설정 적용 직후) -->
+<div class="guide" id="guide" role="status">
+  <div class="guide-row">
+    <div class="guide-text">
+      오른쪽 패널 맨 아래<br>
+      <span class="guide-cta">Export <span id="guideCount">0</span> layers</span> 를 누르세요
+      <div class="guide-sub">안 보이면 패널을 아래로 스크롤하세요</div>
+    </div>
+    <div class="guide-arrow" aria-hidden="true">
+      <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5l5 5-5 5"/></svg>
+    </div>
+  </div>
+  <button class="guide-back" id="guideBack" type="button">플러그인으로 돌아가기</button>
 </div>
 
 <div class="resize-handle" id="resizeHandle" title="드래그해서 크기 조절">
@@ -482,6 +534,28 @@
     handle.addEventListener("pointerup", stop);
     handle.addEventListener("pointercancel", stop);
   })();
+
+  // ------------------------------------------------ Export 버튼 쪽으로 안내
+  var GUIDE = { w: 300, h: 132 };
+  var inGuide = false;
+
+  function enterGuide(count) {
+    document.getElementById("guideCount").textContent = count;
+    inGuide = true;
+    document.body.classList.add("guiding");
+    parent.postMessage({ pluginMessage: { type: "resize", w: GUIDE.w, h: GUIDE.h } }, "*");
+    parent.postMessage({ pluginMessage: { type: "guide", w: GUIDE.w, h: GUIDE.h } }, "*");
+  }
+
+  function exitGuide() {
+    if (!inGuide) return;
+    inGuide = false;
+    document.body.classList.remove("guiding");
+    applySize();   // 확대/축소 중이던 크기로 되돌린다
+    parent.postMessage({ pluginMessage: { type: "guide-end" } }, "*");
+  }
+
+  document.getElementById("guideBack").addEventListener("click", exitGuide);
 
   document.getElementById("btnToggle").addEventListener("click", function () {
     collapsed = !collapsed;
@@ -946,6 +1020,7 @@
       } else {
         setStatus("ok", "✅ 선택을 대상 " + msg.count + "개로 바꿨습니다" + clipNote(msg.clipped) + " — 오른쪽 패널의 <b>Export " + msg.count + " layers</b> 클릭");
         pinnedStatus = true;
+        if (!msg.errors || !msg.errors.length) enterGuide(msg.count);
       }
       if (msg.errors && msg.errors.length) {
         setStatus("error", "❌ 실패 " + msg.errors.length + "건 — " + escapeHtml(msg.errors[0]));
