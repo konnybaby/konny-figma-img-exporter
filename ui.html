@@ -223,7 +223,7 @@
   }
   .guide-close:hover { color: #1a1a1a; }
   .guide-step { font-size: 11.5px; line-height: 1.7; color: #1a1a1a; }
-  .guide-step .tag { font-size: 10px; font-weight: 700; color: #FF5A14; margin-right: 5px; }
+  .guide-alt { font-size: 10.5px; line-height: 1.7; color: #888; }
   .kbd {
     font-size: 10.5px; font-weight: 700; white-space: nowrap;
     padding: 0 5px; border: 1px solid #c2c2c2; border-bottom-width: 2px;
@@ -288,8 +288,8 @@
       <span class="guide-title">이제 Figma 에서 저장하세요</span>
       <button class="guide-close" id="guideClose" type="button" aria-label="안내 닫기">×</button>
     </div>
-    <div class="guide-step"><span class="tag">빠르게</span>오른쪽 패널의 빈 곳을 한 번 클릭 → <span class="kbd" id="guideKey">Shift+Ctrl+E</span></div>
-    <div class="guide-step"><span class="tag">버튼으로</span>오른쪽 패널 맨 아래까지 스크롤 → <span class="guide-cta">Export <span id="guideCount">0</span> layers</span></div>
+    <div class="guide-step"><span class="kbd" id="guideKey">Shift+Ctrl+E</span> 를 누르면 Export 창이 떠요 → <span class="guide-cta">Export</span> 클릭</div>
+    <div class="guide-alt">또는 오른쪽 패널 맨 아래 <span class="guide-cta">Export <span id="guideCount">0</span> layers</span></div>
     <div class="guide-warn">캔버스를 클릭하면 선택이 풀려요</div>
   </div>
 
@@ -493,8 +493,7 @@
     var txt = document.getElementById("miniText");
     if (!document.getElementById("guideBox").hidden) {
       el.className = "status ok";
-      txt.textContent = "→ " + shortcutLabel() + " 또는 패널 맨 아래 Export "
-        + document.getElementById("guideCount").textContent + " layers";
+      txt.textContent = "→ " + shortcutLabel() + " 로 Export 창 열기";
       return;
     }
     if (!matchCount) {
@@ -776,7 +775,7 @@
 
   var DELIVERY_HINT = {
     zip: "ZIP 하나로 받습니다. 저장 창이 한 번만 뜹니다",
-    figma: "<b>Export 설정 적용</b> 버튼을 누른 후 오른쪽 Design 패널 맨 아래 <b>Export N layers</b> 버튼을 눌러주세요."
+    figma: "<b>Export 설정 적용</b> 버튼을 누른 후 <b>{KEY}</b> 를 눌러주세요. (또는 오른쪽 Design 패널 맨 아래 <b>Export N layers</b>)"
   };
 
   // Clip content 를 새로 켠 레이어가 있으면 문서가 바뀌었다는 뜻이라 알려 준다.
@@ -903,7 +902,7 @@
   });
     var deliveryHint = document.getElementById("deliveryHint");
   function renderDeliveryHint() {
-    var html = DELIVERY_HINT[state.delivery] || "";
+    var html = (DELIVERY_HINT[state.delivery] || "").replace("{KEY}", shortcutLabel());
     // WebP 는 Figma 가 내보내지 못해 플러그인이 변환한다 → Figma 자체 Export 를 못 쓴다.
     if (state.format === "WEBP") {
       html += "<br><b>WebP 확장자는 별도 변환 절차를 거쳐 ZIP 파일로만 저장됩니다.</b>";
