@@ -115,6 +115,20 @@
   .col-chip.on { background: #fff0e5; border-color: #fadac3; color: #FF5A14; }
   .col-chip:disabled { opacity: 0.35; cursor: not-allowed; }
 
+  /* 배율 직접 입력 — 칩과 같은 모양의 입력칸. Figma Export 패널과 같은 형식을 받는다 */
+  input.chip-input {
+    flex: 0 0 auto; width: 76px;
+    font-size: 10px; font-weight: 600; font-family: inherit;
+    padding: 3px 10px; border-radius: 20px;
+    background: #fff; border: 1px solid #c2c2c2; color: #1a1a1a;
+    outline: none; transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  input.chip-input::placeholder { color: #aaa; font-weight: 500; }
+  input.chip-input:focus { border-color: #1a1a1a; }
+  input.chip-input.on { background: #fff0e5; border-color: #fadac3; color: #FF5A14; }
+  input.chip-input.bad { border-color: #ea4335; background: #fef2f1; color: #c5221f; }
+  input.chip-input:disabled { opacity: 0.35; cursor: not-allowed; }
+
   /* Preview */
   .preview-wrap {
     background: #fff; border: 1px solid #c2c2c2;
@@ -260,7 +274,10 @@
       <button class="col-chip" data-value="3">3x</button>
       <button class="col-chip" data-value="4">4x</button>
       <button class="col-chip" data-value="1000w">1000w</button>
+      <input type="text" class="chip-input" id="scaleCustom" placeholder="직접 입력"
+             spellcheck="false" autocomplete="off" aria-label="배율 직접 입력 (예: 1.5x, 1200w, 800h)"/>
     </div>
+    <div class="hint" id="scaleHint" hidden>예: <b>1.5x</b> (배수) · <b>1200w</b> (가로 px 고정) · <b>800h</b> (세로 px 고정)</div>
   </div>
 
   <!-- 포맷 -->
@@ -328,6 +345,26 @@
   var busy = false;
   // 네이티브 Export 안내는 selectionchange 재스캔에 덮이면 안 되므로 고정해 둔다.
   var pinnedStatus = false;
+  var lastScan = null;
+
+  function renderScanStatus(msg) {
+    if (msg.error) {
+      setStatus("error", "⚠️ " + escapeHtml(msg.error));
+    } else if (!msg.items.length) {
+      setStatus("warn", msg.mode === "selection"
+        ? "내보낼 레이어를 캔버스에서 선택해 주세요"
+        : escapeHtml(msg.target) + " — 일치하는 레이어 없음");
+    } else {
+      setStatus("ok", escapeHtml(msg.target) + " — " + msg.items.length + "개");
+    }
+  }
+
+  // '개별 파일' 안내는 설정을 바꾸면 더 이상 맞지 않으므로 고정을 풀고 스캔 결과로 되돌린다.
+  function unpin() {
+    if (!pinnedStatus) return;
+    pinnedStatus = false;
+    if (lastScan && !busy) renderScanStatus(lastScan);
+  }
 
   var patternEl   = document.getElementById("pattern");
   var btnReset    = document.getElementById("btnReset");
@@ -375,6 +412,29 @@
   }
 
   // 축소 상태에서는 개수·배율·포맷·저장 방식만 요약해서 보여 준다.
+  // 배율 값은 "2"(배수) · "1200w"(가로 고정) · "800h"(세로 고정) 세 가지 형태다.
+  function scaleLabel(v) {
+    return /[wh]$/.test(String(v)) ? String(v) : v + "x";
+  }
+
+  // Figma Export 패널과 같은 형식으로 받는다: 1.5 / 1.5x / 1200w / 800h
+  var SCALE_LIMIT = { x: [0.1, 10], px: [1, 10000] };
+  function parseScale(raw) {
+    var v = String(raw || "").trim().toLowerCase().replace(/\s+/g, "");
+    if (!v) return null;
+    var m = /^(\d+)(w|h)$/.exec(v);
+    if (m) {
+      var px = Number(m[1]);
+      return px >= SCALE_LIMIT.px[0] && px <= SCALE_LIMIT.px[1] ? px + m[2] : null;
+    }
+    m = /^(\d+(?:\.\d+)?|\.\d+)x?$/.exec(v);
+    if (m) {
+      var x = Number(m[1]);
+      return x >= SCALE_LIMIT.x[0] && x <= SCALE_LIMIT.x[1] ? String(Math.round(x * 100) / 100) : null;
+    }
+    return null;
+  }
+
   function renderMini() {
     if (!collapsed) return;
     var el = document.getElementById("miniStatus");
@@ -387,7 +447,7 @@
     }
     var raster = state.format === "PNG" || state.format === "JPG" || state.format === "WEBP";
     var bits = [matchCount + "개"];
-    if (raster) bits.push(state.scale === "1000w" ? "1000w" : state.scale + "x");
+    if (raster) bits.push(scaleLabel(state.scale));
     bits.push(state.format === "WEBP" ? "WebP" : state.format);
     bits.push(state.delivery === "figma" ? "Figma 내보내기" : "ZIP");
     el.className = "status ok";
@@ -704,10 +764,61 @@
     });
   }
 
-  chipGroup(document.getElementById("scaleChips"), function (v) { state.scale = v; renderMini(); });
+  var scaleCustom = document.getElementById("scaleCustom");
+  var scaleHint = document.getElementById("scaleHint");
+  var lastPresetScale = "2";
+
+  chipGroup(document.getElementById("scaleChips"), function (v) {
+    state.scale = v;
+    lastPresetScale = v;
+    scaleCustom.value = "";
+    scaleCustom.classList.remove("on", "bad");
+    scaleHint.hidden = true;
+    unpin();
+    renderMini();
+  });
+
+  function applyCustomScale() {
+    var raw = scaleCustom.value;
+    var parsed = parseScale(raw);
+    var presets = document.getElementById("scaleChips").querySelectorAll(".col-chip");
+
+    if (!raw.trim()) {
+      // 비우면 마지막으로 고른 프리셋으로 돌아간다.
+      scaleCustom.classList.remove("on", "bad");
+      state.scale = lastPresetScale;
+      pickChip("scaleChips", lastPresetScale);
+    } else if (parsed) {
+      scaleCustom.classList.add("on");
+      scaleCustom.classList.remove("bad");
+      for (var i = 0; i < presets.length; i++) presets[i].classList.remove("on");
+      state.scale = parsed;
+    } else {
+      // 잘못된 값이면 이전 배율을 유지한 채 표시만 한다.
+      scaleCustom.classList.add("bad");
+      scaleCustom.classList.remove("on");
+    }
+    scaleHint.hidden = !(document.activeElement === scaleCustom || scaleCustom.classList.contains("bad"));
+    unpin();
+    renderMini();
+  }
+
+  scaleCustom.addEventListener("input", applyCustomScale);
+  scaleCustom.addEventListener("focus", function () { scaleHint.hidden = false; });
+  scaleCustom.addEventListener("blur", function () {
+    scaleHint.hidden = !scaleCustom.classList.contains("bad");
+  });
+  scaleCustom.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") scaleCustom.blur();
+  });
     var deliveryHint = document.getElementById("deliveryHint");
   function renderDeliveryHint() {
-    deliveryHint.innerHTML = DELIVERY_HINT[state.delivery] || "";
+    var html = DELIVERY_HINT[state.delivery] || "";
+    // WebP 는 Figma 가 내보내지 못해 플러그인이 변환한다 → Figma 자체 Export 를 못 쓴다.
+    if (state.format === "WEBP") {
+      html += "<br><b>WebP 확장자는 별도 변환 절차를 거쳐 ZIP 파일로만 저장됩니다.</b>";
+    }
+    deliveryHint.innerHTML = html;
     deliveryHint.className = state.delivery === "figma" ? "hint strong" : "hint";
   }
   function chipByValue(groupId, value) {
@@ -723,12 +834,16 @@
   // WebP 는 Figma 가 지원하지 않아 플러그인이 PNG 를 받아 직접 변환한다.
   // 그래서 Figma 자체 Export 를 쓰는 '개별 파일' 방식과는 함께 쓸 수 없다.
   function syncFormatDelivery() {
+    unpin();
     var raster = state.format === "PNG" || state.format === "JPG" || state.format === "WEBP";
     var scaleChips = document.getElementById("scaleChips").querySelectorAll(".col-chip");
     for (var i = 0; i < scaleChips.length; i++) scaleChips[i].disabled = !raster;
 
     // WebP 는 항상 고를 수 있다. 고르면 저장 방식이 ZIP 으로 바뀐다(아래 칩 핸들러).
-    chipByValue("deliveryChips", "figma").disabled = state.format === "WEBP";
+    var figmaChip = chipByValue("deliveryChips", "figma");
+    figmaChip.disabled = state.format === "WEBP";
+    figmaChip.title = figmaChip.disabled ? "WebP 는 ZIP 파일로만 저장됩니다" : "";
+    scaleCustom.disabled = !raster;
 
     btnExport.textContent = state.delivery === "figma" ? "Export 설정 적용" : "이미지 내보내기";
     renderDeliveryHint();
@@ -818,17 +933,10 @@
     }
 
     if (msg.type === "scan-result") {
+      lastScan = msg;
       renderPreview(msg.items);
       if (busy || pinnedStatus) return;
-      if (msg.error) {
-        setStatus("error", "⚠️ " + escapeHtml(msg.error));
-      } else if (!msg.items.length) {
-        setStatus("warn", msg.mode === "selection"
-          ? "내보낼 레이어를 캔버스에서 선택해 주세요"
-          : escapeHtml(msg.target) + " — 일치하는 레이어 없음");
-      } else {
-        setStatus("ok", escapeHtml(msg.target) + " — " + msg.items.length + "개");
-      }
+      renderScanStatus(msg);
       return;
     }
 

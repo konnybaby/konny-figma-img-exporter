@@ -165,11 +165,16 @@ function applyClipContent(nodes) {
 
 // ----------------------------------------------------------------- export
 
-// 배율은 '2' 같은 배수와 '1000w' 같은 고정 가로폭 두 가지를 받는다.
+// 배율은 Figma Export 패널과 같은 세 가지 형태를 받는다.
+//   '2' · '1.5x' → 배수,  '1200w' → 가로 px 고정,  '800h' → 세로 px 고정
 function toConstraint(scale) {
-  var m = /^(\d+)w$/.exec(String(scale));
+  var v = String(scale).trim().toLowerCase();
+  var m = /^(\d+)w$/.exec(v);
   if (m) return { type: 'WIDTH', value: Number(m[1]) };
-  return { type: 'SCALE', value: Number(scale) || 2 };
+  m = /^(\d+)h$/.exec(v);
+  if (m) return { type: 'HEIGHT', value: Number(m[1]) };
+  var x = parseFloat(v);
+  return { type: 'SCALE', value: x > 0 ? x : 2 };
 }
 
 async function runExport(opts) {
