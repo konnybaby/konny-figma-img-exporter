@@ -73,11 +73,6 @@ function safeRegExp(src) {
   }
 }
 
-function getRoots() {
-  var roots = liveRoots();
-  return roots.length > 0 ? roots : [figma.currentPage];
-}
-
 // 매칭된 노드를 찾으면 그 하위는 더 내려가지 않는다(중첩 중복 방지).
 function collectMatches(roots, re, skipHidden) {
   var out = [];
@@ -137,7 +132,7 @@ function describeTarget(mode) {
     if (sel.length === 1) return '선택: ' + sel[0].name;
     return '선택: ' + sel.length + '개 레이어';
   }
-  if (sel.length === 0) return '선택 없음 → 현재 페이지 전체 (' + figma.currentPage.name + ')';
+  if (sel.length === 0) return '선택된 프레임 없음';
   if (sel.length === 1) return '선택: ' + sel[0].name;
   return '선택: ' + sel.length + '개 레이어';
 }
@@ -177,10 +172,25 @@ function scan(pattern, skipHidden, sortByName, mode) {
     return;
   }
 
-  var parsed = safeRegExp(toPatternSource(pattern || '') || DEFAULT_PATTERN);
+  // 이름 패턴 모드는 선택된 프레임 안에서만 찾는다. 선택이 없거나 칸이 비었으면 찾지 않는다.
+  // (전에는 선택이 없으면 페이지 전체를, 칸이 비면 보이지 않는 기본값 img 로 찾아
+  //  아무것도 고르지 않았는데 레이어가 잡히는 것처럼 보였다.)
+  var roots = liveRoots();
+  var source = toPatternSource(pattern || '');
+  if (roots.length === 0 || !source) {
+    lastMatches = [];
+    if (roots.length > 0) selectQuietly(roots);
+    figma.ui.postMessage({
+      type: 'scan-result', mode: 'pattern', target: describeTarget('pattern'), items: [], error: null,
+      reason: roots.length === 0 ? 'no-selection' : 'empty-pattern'
+    });
+    return;
+  }
+
+  var parsed = safeRegExp(source);
   if (parsed.err) {
     lastMatches = [];
-    selectQuietly(liveRoots());
+    selectQuietly(roots);
     figma.ui.postMessage({
       type: 'scan-result', mode: 'pattern',
       target: describeTarget('pattern'), items: [], error: '정규식 오류: ' + parsed.err
@@ -188,12 +198,11 @@ function scan(pattern, skipHidden, sortByName, mode) {
     return;
   }
 
-  lastMatches = sortIfNeeded(collectMatches(getRoots(), parsed.re, !!skipHidden), sortByName);
+  lastMatches = sortIfNeeded(collectMatches(roots, parsed.re, !!skipHidden), sortByName);
 
   // 찾은 레이어를 선택해 레이어 패널에서도 그 레이어들만 강조되게 한다.
-  // 못 찾았으면 고른 범위를 그대로 보여 준다. 아무것도 고르지 않은 페이지 전체 검색은
-  // 선택을 건드리지 않는다 — 빈 곳을 눌러 선택을 푼 사람의 화면이 갑자기 바뀌지 않게.
-  if (liveRoots().length > 0) selectQuietly(lastMatches.length ? lastMatches : liveRoots());
+  // 못 찾았으면 고른 프레임을 그대로 보여 준다.
+  selectQuietly(lastMatches.length ? lastMatches : roots);
 
   figma.ui.postMessage({
     type: 'scan-result', mode: 'pattern',

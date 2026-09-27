@@ -271,10 +271,10 @@
   <div id="patternSection">
     <div class="section-label">Layer Name Pattern</div>
     <div class="input-row">
-      <input type="text" id="pattern" placeholder="예: img, banner"/>
+      <input type="text" id="pattern" placeholder="ex) img, banner"/>
       <button class="btn-sm" id="btnReset">기본값</button>
     </div>
-    <div class="hint">레이어 이름에 포함되면 찾아요. 예) <b>img</b> → main_img_01, product-img<br>여러 개는 쉼표(,)로 구분하세요. 예) <b>img, banner</b></div>
+    <div class="hint">레이어 이름에 포함되면 찾아요. ex) <b>img</b> → main_img_01, product-img<br>여러 개는 쉼표(,)로 구분하세요. ex) <b>img, banner</b></div>
   </div>
 
   <!-- 상태 -->
@@ -290,9 +290,9 @@
       <button class="col-chip" data-value="4">4x</button>
       <button class="col-chip" data-value="1000w">1000w</button>
       <input type="text" class="chip-input" id="scaleCustom" placeholder="직접 입력"
-             spellcheck="false" autocomplete="off" aria-label="배율 직접 입력 (예: 1.5x, 1200w, 800h)"/>
+             spellcheck="false" autocomplete="off" aria-label="배율 직접 입력, ex) 1.5x, 1200w, 800h"/>
     </div>
-    <div class="hint" id="scaleHint" hidden>예: <b>1.5x</b> (배수) · <b>1200w</b> (가로 px 고정) · <b>800h</b> (세로 px 고정)</div>
+    <div class="hint" id="scaleHint" hidden>ex) <b>1.5x</b> (배수) · <b>1200w</b> (가로 px 고정) · <b>800h</b> (세로 px 고정)</div>
   </div>
 
   <!-- 포맷 -->
@@ -368,13 +368,30 @@
   var pinnedStatus = false;
   var lastScan = null;
 
+  // 목록이 비었을 때 이유별 안내 — 상태 줄 · 축소 요약 · 목록 자리에서 같은 뜻으로 쓴다.
+  function emptyMessage(msg) {
+    var reason = msg && msg.reason;
+    if (reason === "no-selection") {
+      return { full: "내보낼 레이어가 든 프레임을 선택해 주세요", short: "프레임을 선택해 주세요",
+               list: "프레임을 선택하면 안에서 찾은 레이어가 여기에 표시됩니다" };
+    }
+    if (reason === "empty-pattern") {
+      return { full: "찾을 레이어 이름을 입력해 주세요", short: "찾을 이름을 입력해 주세요",
+               list: "찾을 이름을 입력하면 여기에 표시됩니다" };
+    }
+    if (state.mode === "selection") {
+      return { full: "내보낼 레이어를 캔버스에서 선택해 주세요", short: "레이어를 선택해 주세요",
+               list: "캔버스에서 레이어를 선택해 주세요" };
+    }
+    return { full: escapeHtml((msg && msg.target) || "") + " — 일치하는 레이어 없음", short: "일치하는 레이어 없음",
+             list: "일치하는 레이어가 없습니다" };
+  }
+
   function renderScanStatus(msg) {
     if (msg.error) {
       setStatus("error", "⚠️ " + escapeHtml(msg.error));
     } else if (!msg.items.length) {
-      setStatus("warn", msg.mode === "selection"
-        ? "내보낼 레이어를 캔버스에서 선택해 주세요"
-        : escapeHtml(msg.target) + " — 일치하는 레이어 없음");
+      setStatus("warn", emptyMessage(msg).full);
     } else {
       setStatus("ok", escapeHtml(msg.target) + " — " + msg.items.length + "개");
     }
@@ -468,8 +485,7 @@
     }
     if (!matchCount) {
       el.className = "status warn";
-      txt.textContent = state.mode === "selection"
-        ? "레이어를 선택해 주세요" : "일치하는 레이어 없음";
+      txt.textContent = emptyMessage(lastScan).short;
       return;
     }
     var raster = state.format === "PNG" || state.format === "JPG" || state.format === "WEBP";
@@ -751,7 +767,7 @@
 
   // ------------------------------------------------------------------ view
   var TARGET_HINT = {
-    pattern: "고른 프레임 아래에서 이름이 패턴에 맞는 레이어만 찾습니다. 아무것도 안 고르면 현재 페이지 전체가 대상입니다",
+    pattern: "선택된 프레임 안에서 이름이 패턴에 맞는 레이어만 찾습니다.",
     selection: "캔버스에서 고른 레이어를 이름과 상관없이 내보냅니다"
   };
 
@@ -774,7 +790,7 @@
     return {
       type: type,
       mode: state.mode,
-      pattern: patternEl.value.trim() || DEFAULT_PATTERN,
+      pattern: patternEl.value.trim(),
       skipHidden: state.skipHidden,
       sortByName: state.sortByName,
       clipContent: state.clipContent,
@@ -801,8 +817,7 @@
     btnExport.disabled = busy || items.length === 0;
 
     if (!items.length) {
-      previewList.innerHTML = '<div class="preview-empty">' +
-        (state.mode === "selection" ? "캔버스에서 레이어를 선택해 주세요" : "일치하는 레이어가 없습니다") + '</div>';
+      previewList.innerHTML = '<div class="preview-empty">' + emptyMessage(lastScan).list + '</div>';
       return;
     }
     previewList.innerHTML = items.map(function (it) {
