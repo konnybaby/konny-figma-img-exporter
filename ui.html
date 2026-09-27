@@ -271,10 +271,10 @@
   <div id="patternSection">
     <div class="section-label">Layer Name Pattern</div>
     <div class="input-row">
-      <input type="text" id="pattern" placeholder="^KO[A-Za-z0-9]{3}_img_"/>
+      <input type="text" id="pattern" placeholder="예: img"/>
       <button class="btn-sm" id="btnReset">기본값</button>
     </div>
-    <div class="hint"><b>KO</b> + 영숫자 3자 + <b>_img_</b> 로 시작하는 레이어만 대상</div>
+    <div class="hint">레이어 이름에 이 글자가 들어가면 찾아요. 예) <b>img</b> → main_img_01, product-img<br>여러 개는 <b>|</b> 로 이어 쓰세요. 예) <b>img|banner</b></div>
   </div>
 
   <!-- 상태 -->
@@ -357,7 +357,7 @@
 </div>
 
 <script>
-  var DEFAULT_PATTERN = "^KO[A-Za-z0-9]{3}_img_";
+  var DEFAULT_PATTERN = "img";
 
   var state = { mode: "selection", scale: "2", format: "PNG", delivery: "zip",
                 skipHidden: true, sortByName: true, clipContent: true };
@@ -998,7 +998,6 @@
 
     if (msg.type === "defaults") {
       DEFAULT_PATTERN = msg.pattern;
-      patternEl.placeholder = msg.pattern;
       if (!patternEl.value) patternEl.value = msg.pattern;
       return;
     }

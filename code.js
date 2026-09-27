@@ -1,7 +1,9 @@
 // Konny Figma Image Exporter — Figma plugin (main thread)
 // 선택한 프레임 하위에서 `KO???_img_...` 형식의 레이어만 골라 일괄 내보내기.
 
-var DEFAULT_PATTERN = '^KO[A-Za-z0-9]{3}_img_';
+// 누구나 알아볼 수 있는 기본값 — 이름에 'img' 가 들어간 레이어를 찾는다.
+// 정규식이라 마크업 파트의 '^KO[A-Za-z0-9]{3}_img_' 같은 규칙도 그대로 쓸 수 있다.
+var DEFAULT_PATTERN = 'img';
 
 var EXT = { PNG: 'png', JPG: 'jpg', WEBP: 'webp', SVG: 'svg', PDF: 'pdf' };
 
