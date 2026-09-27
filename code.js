@@ -1,5 +1,5 @@
 // Konny Figma Image Exporter — Figma plugin (main thread)
-// 선택한 프레임 하위에서 `KO???_img_...` 형식의 레이어만 골라 일괄 내보내기.
+// 캔버스에서 고른 레이어, 또는 고른 프레임 안에서 이름이 패턴에 맞는 레이어를 일괄 내보내기.
 
 // 누구나 알아볼 수 있는 기본값 — 이름에 'img' 가 들어간 레이어를 찾는다.
 // 정규식이라 마크업 파트의 '^KO[A-Za-z0-9]{3}_img_' 같은 규칙도 그대로 쓸 수 있다.
@@ -17,6 +17,30 @@ var lastMatches = [];
 // 화면을 덜 가리도록 작게 연다. UI 에서 축소/확대 토글로 resize 를 요청한다.
 figma.showUI(__html__, { width: 360, height: 640, title: "Konny Figma Image Exporter" });
 
+// ---------------------------------------------------------- selection state
+// 캔버스 선택은 두 가지로 쓰인다. 사용자가 고른 '범위' 와, 무엇을 내보낼지 레이어 패널에
+// 보여 주는 '대상' 이다. 이름 패턴 모드에서 찾은 레이어를 선택해 보여 주면 선택이 바뀌므로,
+//  - 사용자가 직접 고른 범위는 userRoots 에 따로 기억하고
+//  - 플러그인이 바꾼 선택은 selectionchange 에서 무시한다.
+// 그래야 패턴을 고쳐 입력해도 처음 고른 프레임 안에서 다시 찾는다.
+var userRoots = figma.currentPage.selection.slice();
+var programmaticKey = null;   // 플러그인이 마지막으로 만든 선택 (id 정렬 문자열)
+
+function selKey(nodes) {
+  return nodes.map(function (n) { return n.id; }).sort().join(',');
+}
+
+function liveRoots() {
+  return userRoots.filter(function (n) { return !n.removed; });
+}
+
+// 선택을 바꾸되, 그로 인한 selectionchange 는 사용자 동작으로 보지 않는다.
+function selectQuietly(nodes) {
+  programmaticKey = selKey(nodes);
+  if (programmaticKey === selKey(figma.currentPage.selection)) return;
+  try { figma.currentPage.selection = nodes; } catch (e) { /* 다른 페이지 노드 등 */ }
+}
+
 // ---------------------------------------------------------------- utilities
 
 function safeRegExp(src) {
@@ -28,9 +52,8 @@ function safeRegExp(src) {
 }
 
 function getRoots() {
-  var sel = figma.currentPage.selection;
-  if (sel.length > 0) return sel.slice();
-  return [figma.currentPage];
+  var roots = liveRoots();
+  return roots.length > 0 ? roots : [figma.currentPage];
 }
 
 // 매칭된 노드를 찾으면 그 하위는 더 내려가지 않는다(중첩 중복 방지).
@@ -86,7 +109,7 @@ function uniqueName(used, base, ext) {
 }
 
 function describeTarget(mode) {
-  var sel = figma.currentPage.selection;
+  var sel = liveRoots();
   if (mode === 'selection') {
     if (sel.length === 0) return '선택된 레이어 없음';
     if (sel.length === 1) return '선택: ' + sel[0].name;
@@ -120,9 +143,11 @@ function sortIfNeeded(nodes, sortByName) {
 // mode 'pattern'(기본) — 고른 프레임 아래에서 이름이 패턴에 맞는 레이어만 찾는다.
 function scan(pattern, skipHidden, sortByName, mode) {
   if (mode === 'selection') {
-    var sel = figma.currentPage.selection.slice();
+    var sel = liveRoots();
     if (skipHidden) sel = sel.filter(function (n) { return n.visible !== false; });
     lastMatches = sortIfNeeded(sel, sortByName);
+    // 목록 한 줄을 눌러 바뀐 선택이 있어도, 내보낼 대상 전체를 다시 보여 준다.
+    selectQuietly(lastMatches.length ? lastMatches : liveRoots());
     figma.ui.postMessage({
       type: 'scan-result', mode: 'selection',
       target: describeTarget('selection'), items: toItems(lastMatches), error: null
@@ -133,6 +158,7 @@ function scan(pattern, skipHidden, sortByName, mode) {
   var parsed = safeRegExp(pattern || DEFAULT_PATTERN);
   if (parsed.err) {
     lastMatches = [];
+    selectQuietly(liveRoots());
     figma.ui.postMessage({
       type: 'scan-result', mode: 'pattern',
       target: describeTarget('pattern'), items: [], error: '정규식 오류: ' + parsed.err
@@ -141,6 +167,12 @@ function scan(pattern, skipHidden, sortByName, mode) {
   }
 
   lastMatches = sortIfNeeded(collectMatches(getRoots(), parsed.re, !!skipHidden), sortByName);
+
+  // 찾은 레이어를 선택해 레이어 패널에서도 그 레이어들만 강조되게 한다.
+  // 못 찾았으면 고른 범위를 그대로 보여 준다. 아무것도 고르지 않은 페이지 전체 검색은
+  // 선택을 건드리지 않는다 — 빈 곳을 눌러 선택을 푼 사람의 화면이 갑자기 바뀌지 않게.
+  if (liveRoots().length > 0) selectQuietly(lastMatches.length ? lastMatches : liveRoots());
+
   figma.ui.postMessage({
     type: 'scan-result', mode: 'pattern',
     target: describeTarget('pattern'), items: toItems(lastMatches), error: null
@@ -259,7 +291,7 @@ function prepareNativeExport(opts) {
     }
   }
 
-  figma.currentPage.selection = nodes;
+  selectQuietly(nodes);
   figma.viewport.scrollAndZoomIntoView(nodes);
   figma.ui.postMessage({ type: 'native-ready', count: ok, errors: errors, clipped: clipped });
 }
@@ -306,7 +338,8 @@ figma.ui.onmessage = function (msg) {
     case 'select': {
       var node = lastMatches.filter(function (n) { return n.id === msg.id; })[0];
       if (node) {
-        figma.currentPage.selection = [node];
+        // 목록에서 한 줄을 눌러도 목록이 그 하나로 줄어들지 않도록 조용히 선택한다.
+        selectQuietly([node]);
         figma.viewport.scrollAndZoomIntoView([node]);
       }
       break;
@@ -330,5 +363,15 @@ figma.ui.onmessage = function (msg) {
 };
 
 figma.on('selectionchange', function () {
+  var sel = figma.currentPage.selection;
+  if (programmaticKey !== null && selKey(sel) === programmaticKey) return;   // 플러그인이 바꾼 선택
+  programmaticKey = null;
+  userRoots = sel.slice();
+  scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
+});
+
+figma.on('currentpagechange', function () {
+  programmaticKey = null;
+  userRoots = figma.currentPage.selection.slice();
   scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
 });
