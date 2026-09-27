@@ -43,6 +43,28 @@ function selectQuietly(nodes) {
 
 // ---------------------------------------------------------------- utilities
 
+// 쉼표로 여러 단어를 받는다. 'img,banner' 와 'img, banner' 는 같다 → (?:img)|(?:banner)
+// 이 칸은 정규식도 받으므로 {2,5} · [a,b] 처럼 괄호 안에 있는 쉼표는 나누지 않는다.
+function toPatternSource(input) {
+  var parts = [], cur = '', brace = 0, bracket = 0;
+  for (var i = 0; i < input.length; i++) {
+    var c = input[i];
+    // 역슬래시로 이스케이프한 글자(\, 등)는 나누지 않고 그대로 둔다.
+    if (c === '\\' && i + 1 < input.length) { cur += c + input[++i]; continue; }
+    if (c === '[') bracket++;
+    else if (c === ']' && bracket > 0) bracket--;
+    else if (c === '{' && !bracket) brace++;
+    else if (c === '}' && brace > 0 && !bracket) brace--;
+    if (c === ',' && !brace && !bracket) { parts.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  parts.push(cur);
+  // 빈 조각은 모든 이름에 맞아 버리므로 버린다 ('img,' · ', banner' 같은 입력).
+  parts = parts.map(function (p) { return p.trim(); }).filter(Boolean);
+  if (parts.length <= 1) return parts[0] || '';
+  return parts.map(function (p) { return '(?:' + p + ')'; }).join('|');
+}
+
 function safeRegExp(src) {
   try {
     return { re: new RegExp(src), err: null };
@@ -155,7 +177,7 @@ function scan(pattern, skipHidden, sortByName, mode) {
     return;
   }
 
-  var parsed = safeRegExp(pattern || DEFAULT_PATTERN);
+  var parsed = safeRegExp(toPatternSource(pattern || '') || DEFAULT_PATTERN);
   if (parsed.err) {
     lastMatches = [];
     selectQuietly(liveRoots());
