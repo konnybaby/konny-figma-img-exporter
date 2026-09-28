@@ -241,10 +241,10 @@ UI는 **Konny PDP Text Exporter** 의 스타일시트를 그대로 가져와 맞
 링크는 그대로이고 항상 최신 버전을 받습니다. ZIP 안에는 폴더 없이 파일을 바로 담아, 압축을
 풀면 `manifest.json` 이 바로 보입니다.
 
-새 버전 올리기:
+새 버전 올리기 (`core.autocrlf=false` 는 윈도우에서 줄바꿈이 CRLF 로 바뀌어 담기지 않게 하려는 것):
 
 ```bash
-git archive --format=zip -o konny-figma-img-exporter.zip HEAD manifest.json code.js ui.html README.md
+git -c core.autocrlf=false archive --format=zip -o konny-figma-img-exporter.zip HEAD manifest.json code.js ui.html README.md
 gh release create vX.Y.Z konny-figma-img-exporter.zip --title "vX.Y.Z" --notes "변경 내용"
 ```
 
