@@ -5,12 +5,14 @@ Figma 레이어를 2x PNG로 한 번에 내보내는 플러그인입니다. 캔�
 
 ## 설치
 
-빌드 과정이 없습니다. 이 폴더를 그대로 등록하면 됩니다.
-
-1. Figma 데스크톱 앱 실행
-2. 메뉴 → **Plugins → Development → Import plugin from manifest…**
-3. 이 폴더의 `manifest.json` 선택
+1. **[최신 버전 다운로드](https://github.com/konnybaby/konny-figma-img-exporter/releases/latest/download/konny-figma-img-exporter.zip)** 후 압축 풀기
+   — 압축 푼 폴더는 지우지 않을 곳에 두세요. 옮기거나 지우면 플러그인이 사라집니다
+2. Figma **데스크톱 앱** → 메뉴 → **Plugins → Development → Import plugin from manifest…**
+3. 압축 푼 폴더의 `manifest.json` 선택
 4. 이후 **Plugins → Development → Konny Figma Image Exporter** 로 실행
+
+업데이트는 새 버전을 받아 **같은 폴더에 덮어쓰기**만 하면 됩니다. 다시 가져올 필요는 없습니다.
+빌드 과정은 없습니다.
 
 ## 대상 지정 두 가지
 
@@ -228,3 +230,26 @@ UI는 **Konny PDP Text Exporter** 의 스타일시트를 그대로 가져와 맞
 
 헤더 로고는 PDP Text Exporter와 같은 이미지(`konny.co.kr` 파비콘)를 씁니다.
 `manifest.json` 의 `networkAccess` 에는 이 로고 도메인 한 곳만 허용해 두었습니다.
+
+## 배포 (릴리스)
+
+설치 파일은 [GitHub 릴리스](https://github.com/konnybaby/konny-figma-img-exporter/releases)로 배포합니다.
+릴리스에 올린 ZIP 은 GitHub 가 **다운로드 수를 기간 제한 없이** 셉니다. 저장소의 자동 ZIP
+(`archive/refs/heads/main.zip`)은 집계되지 않습니다.
+
+안내 링크는 `releases/latest/download/konny-figma-img-exporter.zip` 입니다. 새 버전을 올려도
+링크는 그대로이고 항상 최신 버전을 받습니다. ZIP 안에는 폴더 없이 파일을 바로 담아, 압축을
+풀면 `manifest.json` 이 바로 보입니다.
+
+새 버전 올리기:
+
+```bash
+git archive --format=zip -o konny-figma-img-exporter.zip HEAD manifest.json code.js ui.html README.md
+gh release create vX.Y.Z konny-figma-img-exporter.zip --title "vX.Y.Z" --notes "변경 내용"
+```
+
+다운로드 수 확인 (전체 릴리스 합계):
+
+```bash
+gh api repos/konnybaby/konny-figma-img-exporter/releases --jq '[.[].assets[].download_count] | add'
+```
