@@ -22,8 +22,13 @@ var prefs = null;      // clientStorage 에서 읽은 UI 설정 (없으면 null)
 var uiReady = false;   // showUI 전에는 UI 로 메시지를 보내지 않는다
 
 // 저장된 크기로 창을 연다. 축소 상태로 닫았으면 축소 크기로 연다.
+// 축소 크기(mini)는 축소 상태에서 직접 드래그한 적이 있을 때만 저장되므로,
+// 없으면 UI 의 miniSize() 와 같은 방식으로 확대 크기에서 계산한다.
 function initialSize(p) {
-  var s = p && p.size && (p.collapsed ? p.size.mini : p.size.full);
+  var size = p && p.size, full = size && size.full;
+  var s = p && p.collapsed
+    ? (size && size.mini) || (full && { w: full.w, h: Math.max(124, Math.round(full.h / 5)) }) || { w: 360, h: 128 }
+    : full;
   if (s && s.w > 0 && s.h > 0) return { w: Math.max(240, Math.round(s.w)), h: Math.max(96, Math.round(s.h)) };
   return DEFAULT_SIZE;
 }
