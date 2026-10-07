@@ -14,8 +14,24 @@ function figmaFormat(fmt) {
 
 var lastMatches = [];
 
-// 화면을 덜 가리도록 작게 연다. UI 에서 축소/확대 토글로 resize 를 요청한다.
-figma.showUI(__html__, { width: 360, height: 640, title: "Konny Figma Image Exporter" });
+// UI 설정(접힘 상태·창 크기·포맷 등)은 clientStorage 에 저장한다.
+// 플러그인 UI iframe 은 localStorage 를 쓸 수 없어, 전에는 창을 열 때마다 초기화됐다.
+var PREFS_KEY = 'konnyImageExporter_prefs';
+var DEFAULT_SIZE = { w: 360, h: 640 };
+var prefs = null;      // clientStorage 에서 읽은 UI 설정 (없으면 null)
+var uiReady = false;   // showUI 전에는 UI 로 메시지를 보내지 않는다
+
+// 저장된 크기로 창을 연다. 축소 상태로 닫았으면 축소 크기로 연다.
+// 축소 크기(mini)는 축소 상태에서 직접 드래그한 적이 있을 때만 저장되므로,
+// 없으면 UI 의 miniSize() 와 같은 방식으로 확대 크기에서 계산한다.
+function initialSize(p) {
+  var size = p && p.size, full = size && size.full;
+  var s = p && p.collapsed
+    ? (size && size.mini) || (full && { w: full.w, h: Math.max(124, Math.round(full.h / 5)) }) || { w: 360, h: 128 }
+    : full;
+  if (s && s.w > 0 && s.h > 0) return { w: Math.max(240, Math.round(s.w)), h: Math.max(96, Math.round(s.h)) };
+  return DEFAULT_SIZE;
+}
 
 // ---------------------------------------------------------- selection state
 // 캔버스 선택은 두 가지로 쓰인다. 사용자가 고른 '범위' 와, 무엇을 내보낼지 레이어 패널에
@@ -338,12 +354,13 @@ function remember(msg) {
   if (msg.mode === 'pattern' || msg.mode === 'selection') uiState.mode = msg.mode;
 }
 
-figma.ui.onmessage = function (msg) {
+function onMessage(msg) {
   if (!msg) return;
 
   switch (msg.type) {
     case 'init':
-      figma.ui.postMessage({ type: 'defaults', pattern: DEFAULT_PATTERN });
+      // 저장된 UI 설정도 함께 보낸다. UI 가 적용한 뒤 다시 scan 을 요청한다.
+      figma.ui.postMessage({ type: 'defaults', pattern: DEFAULT_PATTERN, prefs: prefs });
       remember(msg);
       scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
       break;
@@ -383,6 +400,14 @@ figma.ui.onmessage = function (msg) {
       }
       break;
 
+    case 'save-prefs':
+      // 저장이 실패해도 내보내기 동작에는 영향이 없으니 조용히 넘긴다.
+      if (msg.prefs && typeof msg.prefs === 'object') {
+        prefs = msg.prefs;
+        figma.clientStorage.setAsync(PREFS_KEY, msg.prefs).catch(function () {});
+      }
+      break;
+
     case 'notify':
       figma.notify(msg.message);
       break;
@@ -391,9 +416,10 @@ figma.ui.onmessage = function (msg) {
       figma.closePlugin();
       break;
   }
-};
+}
 
 figma.on('selectionchange', function () {
+  if (!uiReady) return;
   var sel = figma.currentPage.selection;
   if (programmaticKey !== null && selKey(sel) === programmaticKey) return;   // 플러그인이 바꾼 선택
   programmaticKey = null;
@@ -402,7 +428,19 @@ figma.on('selectionchange', function () {
 });
 
 figma.on('currentpagechange', function () {
+  if (!uiReady) return;
   programmaticKey = null;
   userRoots = figma.currentPage.selection.slice();
   scan(uiState.pattern, uiState.skipHidden, uiState.sortByName, uiState.mode);
 });
+
+// ------------------------------------------------------------------- boot
+// 저장된 설정을 먼저 읽고 창을 연다. 그래야 축소 상태로 닫았을 때 처음부터 작게 열린다.
+figma.clientStorage.getAsync(PREFS_KEY)
+  .then(function (p) { prefs = p || null; }, function () { prefs = null; })
+  .then(function () {
+    var size = initialSize(prefs);
+    figma.showUI(__html__, { width: size.w, height: size.h, title: "Konny Figma Image Exporter" });
+    figma.ui.onmessage = onMessage;
+    uiReady = true;
+  });
