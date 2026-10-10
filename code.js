@@ -311,8 +311,9 @@ async function runExport(opts) {
 
     var filename = uniqueName(used, sanitize(node.name), ext);
 
-    // WebP 는 투명 배경으로: 슬라이스는 상위 프레임 배경까지 함께 찍히므로 잠시 숨긴다.
-    var restore = fmt === 'WEBP' ? hideContainerFills(node) : null;
+    // 투명을 담을 수 있는 PNG · WebP 는 투명 배경으로: 슬라이스는 상위 프레임 배경까지
+    // 함께 찍히므로 잠시 숨긴다. JPG 는 투명이 없어 그대로 둔다.
+    var restore = (fmt === 'PNG' || fmt === 'WEBP') ? hideContainerFills(node) : null;
     try {
       var bytes = await node.exportAsync(settings);
       figma.ui.postMessage({ type: 'file', name: filename, bytes: bytes });
