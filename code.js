@@ -247,25 +247,38 @@ function applyClipContent(nodes) {
 // ----------------------------------------------------------------- export
 
 // 슬라이스는 자기 내용이 없고 '그 영역에 보이는 것' 을 잘라 내보낸다. 그래서 슬라이스를
-// 담은 상위 프레임 · 섹션의 배경(fills)까지 찍혀 투명이어야 할 곳이 배경색으로 채워진다.
-// 내보내는 동안만 상위 컨테이너의 fills 를 비우고, 끝나면 그대로 되돌린다.
+// 담은 상위 프레임 · 섹션의 배경(fills)과, 페이지에 바로 놓인 경우 페이지 배경색까지 찍혀
+// 투명이어야 할 곳이 배경색으로 채워진다.
+// 내보내는 동안만 상위 컨테이너의 fills 를 비우고 페이지 배경을 투명으로 두었다가, 끝나면 되돌린다.
+// (페이지 배경은 단색 하나만 허용되므로 비우지 않고 opacity 를 0 으로 한다)
 // 슬라이스가 아닌 레이어는 원래 자기 내용만 내보내므로 건드리지 않는다.
 function hideContainerFills(node) {
   if (node.type !== 'SLICE') return null;
   var saved = [];
-  for (var p = node.parent; p && p.type !== 'PAGE' && p.type !== 'DOCUMENT'; p = p.parent) {
+  var p = node.parent;
+  for (; p && p.type !== 'PAGE' && p.type !== 'DOCUMENT'; p = p.parent) {
     if (!('fills' in p) || !Array.isArray(p.fills) || p.fills.length === 0) continue;
     try {
-      saved.push({ node: p, fills: p.fills });
+      saved.push({ node: p, key: 'fills', value: p.fills });
       p.fills = [];
     } catch (e) {
       saved.pop();   // 쓸 수 없는 노드는 건너뛴다
     }
   }
+  if (p && p.type === 'PAGE' && Array.isArray(p.backgrounds) && p.backgrounds.length) {
+    try {
+      saved.push({ node: p, key: 'backgrounds', value: p.backgrounds });
+      p.backgrounds = p.backgrounds.map(function (b) {
+        return Object.assign({}, b, { opacity: 0 });
+      });
+    } catch (e) {
+      saved.pop();
+    }
+  }
   if (!saved.length) return null;
   return function restore() {
     for (var i = saved.length - 1; i >= 0; i--) {
-      try { saved[i].node.fills = saved[i].fills; } catch (e) {}
+      try { saved[i].node[saved[i].key] = saved[i].value; } catch (e) {}
     }
   };
 }
