@@ -246,6 +246,30 @@ function applyClipContent(nodes) {
 
 // ----------------------------------------------------------------- export
 
+// 슬라이스는 자기 내용이 없고 '그 영역에 보이는 것' 을 잘라 내보낸다. 그래서 슬라이스를
+// 담은 상위 프레임 · 섹션의 배경(fills)까지 찍혀 투명이어야 할 곳이 배경색으로 채워진다.
+// 내보내는 동안만 상위 컨테이너의 fills 를 비우고, 끝나면 그대로 되돌린다.
+// 슬라이스가 아닌 레이어는 원래 자기 내용만 내보내므로 건드리지 않는다.
+function hideContainerFills(node) {
+  if (node.type !== 'SLICE') return null;
+  var saved = [];
+  for (var p = node.parent; p && p.type !== 'PAGE' && p.type !== 'DOCUMENT'; p = p.parent) {
+    if (!('fills' in p) || !Array.isArray(p.fills) || p.fills.length === 0) continue;
+    try {
+      saved.push({ node: p, fills: p.fills });
+      p.fills = [];
+    } catch (e) {
+      saved.pop();   // 쓸 수 없는 노드는 건너뛴다
+    }
+  }
+  if (!saved.length) return null;
+  return function restore() {
+    for (var i = saved.length - 1; i >= 0; i--) {
+      try { saved[i].node.fills = saved[i].fills; } catch (e) {}
+    }
+  };
+}
+
 // 배율은 Figma Export 패널과 같은 세 가지 형태를 받는다.
 //   '2' · '1.5x' → 배수,  '1200w' → 가로 px 고정,  '800h' → 세로 px 고정
 function toConstraint(scale) {
@@ -287,12 +311,16 @@ async function runExport(opts) {
 
     var filename = uniqueName(used, sanitize(node.name), ext);
 
+    // WebP 는 투명 배경으로: 슬라이스는 상위 프레임 배경까지 함께 찍히므로 잠시 숨긴다.
+    var restore = fmt === 'WEBP' ? hideContainerFills(node) : null;
     try {
       var bytes = await node.exportAsync(settings);
       figma.ui.postMessage({ type: 'file', name: filename, bytes: bytes });
       ok++;
     } catch (e) {
       errors.push(node.name + ' — ' + String((e && e.message) || e));
+    } finally {
+      if (restore) restore();
     }
   }
 
